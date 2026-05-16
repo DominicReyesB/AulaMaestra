@@ -1,0 +1,74 @@
+[
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_student.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_student.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_activity_student_salon.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/activity_student_salon.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_activity_login.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/activity_login.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_salon.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_salon.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_activity_teacher_salons.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/activity_teacher_salons.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_dialog_grade.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/dialog_grade.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/drawable_ic_launcher.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_fragment_student_chat.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/fragment_student_chat.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_dialog_new_publication.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/dialog_new_publication.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_submission.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_submission.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_message_line.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_message_line.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_fragment_recycler.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/fragment_recycler.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_post.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_post.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_activity_message_thread.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/activity_message_thread.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_dialog_submit.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/dialog_submit.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_activity_teacher_salon.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/activity_teacher_salon.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_post_student.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_post_student.xml"
+    },
+    {
+        "merged": "com.aulamaestra.app-debug-31:/layout_item_student_roster.xml.flat",
+        "source": "com.aulamaestra.app-main-33:/layout/item_student_roster.xml"
+    }
+]

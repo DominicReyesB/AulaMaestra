@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aula Maestra</string>
+    <string name="role_teacher">Soy maestra</string>
+    <string name="role_student">Soy alumno</string>
+    <string name="username">Usuario</string>
+    <string name="password">Contraseña</string>
+    <string name="login">Entrar</string>
+    <string name="register">Crear cuenta</string>
+    <string name="student_code">Código del salón</string>
+    <string name="student_name">Tu nombre</string>
+    <string name="join_class">Unirme al salón</string>
+    <string name="salons_title">Mis salones</string>
+    <string name="invite_code_label">Código: %1$s</string>
+    <string name="tab_announcements">Anuncios</string>
+    <string name="tab_assignments">Tareas</string>
+    <string name="tab_files">Archivos</string>
+    <string name="tab_roster">Alumnos</string>
+    <string name="tab_grades">Calificar</string>
+    <string name="tab_messages">Mensajes</string>
+    <string name="new_post">Nueva publicación</string>
+    <string name="title_hint">Título</string>
+    <string name="body_hint">Descripción (opcional)</string>
+    <string name="type_announcement">Anuncio</string>
+    <string name="type_assignment">Tarea</string>
+    <string name="type_file">Archivo</string>
+    <string name="attach_file">Adjuntar archivo</string>
+    <string name="save">Guardar</string>
+    <string name="submit">Entregar</string>
+    <string name="grade">Calificación</string>
+    <string name="feedback">Comentario</string>
+    <string name="send">Enviar</string>
+    <string name="messages_with">Mensajes con %1$s</string>
+    <string name="hint_message">Escribe un mensaje…</string>
+    <string name="logout">Salir</string>
+    <string name="no_students">Aún no hay alumnos en este salón.</string>
+    <string name="open_thread">Abrir chat</string>
+    <string name="tab_classroom">Aula</string>
+    <string name="tab_my_work">Mis entregas</string>
+    <string name="chat_teacher">Mensajes con la maestra</string>
+</resources>
