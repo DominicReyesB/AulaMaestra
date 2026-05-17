@@ -9,7 +9,13 @@
     <string name="register">Crear cuenta</string>
     <string name="student_code">Código del salón</string>
     <string name="student_name">Tu nombre</string>
-    <string name="join_class">Unirme al salón</string>
+    <string name="join_class">Registrarme en el salón</string>
+    <string name="student_welcome_back">Hola, %1$s</string>
+    <string name="student_return_hint">Ya estás registrado en este dispositivo. Solo entra con el código del salón.</string>
+    <string name="student_login">Iniciar sesión</string>
+    <string name="student_logout">Cambiar de alumno</string>
+    <string name="student_already_registered">Ya estás registrado. Usa «Iniciar sesión».</string>
+    <string name="student_not_registered">Primero regístrate con el código del salón.</string>
     <string name="salons_title">Mis salones</string>
     <string name="invite_code_label">Código: %1$s</string>
     <string name="tab_announcements">Anuncios</string>

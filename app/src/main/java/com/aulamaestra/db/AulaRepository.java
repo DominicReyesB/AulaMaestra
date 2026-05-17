@@ -16,7 +16,10 @@ import com.aulamaestra.api.dto.PostCreateRequest;
 import com.aulamaestra.api.dto.PostDto;
 import com.aulamaestra.api.dto.SalonDto;
 import com.aulamaestra.api.dto.StudentDto;
+import com.aulamaestra.api.dto.StudentJoinRequest;
+import com.aulamaestra.api.dto.StudentJoinResponse;
 import com.aulamaestra.api.dto.StudentNameRequest;
+import com.aulamaestra.model.StudentJoinResult;
 import com.aulamaestra.api.dto.SubmissionCreateRequest;
 import com.aulamaestra.api.dto.SubmissionDto;
 import com.aulamaestra.api.dto.UploadResponse;
@@ -67,6 +70,20 @@ public class AulaRepository {
             @Override
             public void onFailure(Call<T> call, Throwable t) {
                 main.post(() -> cb.onError(t.getMessage() != null ? t.getMessage() : "Sin conexión al servidor"));
+            }
+        });
+    }
+
+    private void enqueueId(Call<IdResponse> call, RepoCallback<Long> cb) {
+        enqueue(call, new RepoCallback<IdResponse>() {
+            @Override
+            public void onSuccess(IdResponse data) {
+                cb.onSuccess(data.id);
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
             }
         });
     }
@@ -152,33 +169,78 @@ public class AulaRepository {
     }
 
     public void registerTeacher(String username, String password, RepoCallback<Long> cb) {
-        enqueue(api.registerTeacher(new AuthRequest(username, password)), r -> cb.onSuccess(r.id));
+        enqueueId(api.registerTeacher(new AuthRequest(username, password)), cb);
     }
 
     public void loginTeacher(String username, String password, RepoCallback<Long> cb) {
-        enqueue(api.loginTeacher(new AuthRequest(username, password)), r -> cb.onSuccess(r.id));
+        enqueueId(api.loginTeacher(new AuthRequest(username, password)), cb);
     }
 
     public void listSalonsForTeacher(long teacherId, RepoCallback<List<Salon>> cb) {
-        enqueue(api.listSalons(teacherId), list -> {
-            List<Salon> out = new ArrayList<>();
-            for (SalonDto d : list) {
-                out.add(mapSalon(d));
+        enqueue(api.listSalons(teacherId), new RepoCallback<List<SalonDto>>() {
+            @Override
+            public void onSuccess(List<SalonDto> list) {
+                List<Salon> out = new ArrayList<>();
+                for (SalonDto d : list) {
+                    out.add(mapSalon(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
     public void findSalonById(long salonId, RepoCallback<Salon> cb) {
-        enqueue(api.getSalon(salonId), d -> cb.onSuccess(mapSalon(d)));
+        enqueue(api.getSalon(salonId), new RepoCallback<SalonDto>() {
+            @Override
+            public void onSuccess(SalonDto d) {
+                cb.onSuccess(mapSalon(d));
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
+        });
     }
 
     public void findSalonByCode(String code, RepoCallback<Salon> cb) {
-        enqueue(api.getSalonByCode(code), d -> cb.onSuccess(mapSalon(d)));
+        enqueue(api.getSalonByCode(code), new RepoCallback<SalonDto>() {
+            @Override
+            public void onSuccess(SalonDto d) {
+                cb.onSuccess(mapSalon(d));
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
+        });
     }
 
     public void createStudent(String name, RepoCallback<Long> cb) {
-        enqueue(api.createStudent(new StudentNameRequest(name)), r -> cb.onSuccess(r.id));
+        enqueueId(api.createStudent(new StudentNameRequest(name)), cb);
+    }
+
+    public void joinSalon(String inviteCode, String displayName, Long existingStudentId,
+                          RepoCallback<StudentJoinResult> cb) {
+        enqueue(api.joinSalon(new StudentJoinRequest(inviteCode, displayName, existingStudentId)),
+                new RepoCallback<StudentJoinResponse>() {
+                    @Override
+                    public void onSuccess(StudentJoinResponse r) {
+                        cb.onSuccess(new StudentJoinResult(
+                                r.studentId, r.salonId, r.displayName, r.salonNumber));
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        cb.onError(message);
+                    }
+                });
     }
 
     public void updateStudentName(long studentId, String name, RepoCallback<Void> cb) {
@@ -190,28 +252,43 @@ public class AulaRepository {
     }
 
     public void listStudentsInSalon(long salonId, RepoCallback<List<Student>> cb) {
-        enqueue(api.listStudents(salonId), list -> {
-            List<Student> out = new ArrayList<>();
-            for (StudentDto d : list) {
-                out.add(mapStudent(d));
+        enqueue(api.listStudents(salonId), new RepoCallback<List<StudentDto>>() {
+            @Override
+            public void onSuccess(List<StudentDto> list) {
+                List<Student> out = new ArrayList<>();
+                for (StudentDto d : list) {
+                    out.add(mapStudent(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
     public void insertPost(long salonId, int postType, String title, String body, String filePath,
                            RepoCallback<Long> cb) {
-        enqueue(api.createPost(salonId, new PostCreateRequest(postType, title, body, filePath)),
-                r -> cb.onSuccess(r.id));
+        enqueueId(api.createPost(salonId, new PostCreateRequest(postType, title, body, filePath)), cb);
     }
 
     public void listPosts(long salonId, Integer typeFilter, RepoCallback<List<Post>> cb) {
-        enqueue(api.listPosts(salonId, typeFilter), list -> {
-            List<Post> out = new ArrayList<>();
-            for (PostDto d : list) {
-                out.add(mapPost(d));
+        enqueue(api.listPosts(salonId, typeFilter), new RepoCallback<List<PostDto>>() {
+            @Override
+            public void onSuccess(List<PostDto> list) {
+                List<Post> out = new ArrayList<>();
+                for (PostDto d : list) {
+                    out.add(mapPost(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
@@ -221,22 +298,38 @@ public class AulaRepository {
     }
 
     public void listSubmissionsForSalon(long salonId, RepoCallback<List<SubmissionRow>> cb) {
-        enqueue(api.listSubmissionsForSalon(salonId), list -> {
-            List<SubmissionRow> out = new ArrayList<>();
-            for (SubmissionDto d : list) {
-                out.add(mapSubmission(d));
+        enqueue(api.listSubmissionsForSalon(salonId), new RepoCallback<List<SubmissionDto>>() {
+            @Override
+            public void onSuccess(List<SubmissionDto> list) {
+                List<SubmissionRow> out = new ArrayList<>();
+                for (SubmissionDto d : list) {
+                    out.add(mapSubmission(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
     public void listSubmissionsForStudent(long salonId, long studentId, RepoCallback<List<SubmissionRow>> cb) {
-        enqueue(api.listSubmissionsForStudent(salonId, studentId), list -> {
-            List<SubmissionRow> out = new ArrayList<>();
-            for (SubmissionDto d : list) {
-                out.add(mapSubmission(d));
+        enqueue(api.listSubmissionsForStudent(salonId, studentId), new RepoCallback<List<SubmissionDto>>() {
+            @Override
+            public void onSuccess(List<SubmissionDto> list) {
+                List<SubmissionRow> out = new ArrayList<>();
+                for (SubmissionDto d : list) {
+                    out.add(mapSubmission(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
@@ -250,17 +343,35 @@ public class AulaRepository {
     }
 
     public void listMessages(long salonId, long studentId, RepoCallback<List<ChatMessage>> cb) {
-        enqueue(api.listMessages(salonId, studentId), list -> {
-            List<ChatMessage> out = new ArrayList<>();
-            for (MessageDto d : list) {
-                out.add(mapMessage(d));
+        enqueue(api.listMessages(salonId, studentId), new RepoCallback<List<MessageDto>>() {
+            @Override
+            public void onSuccess(List<MessageDto> list) {
+                List<ChatMessage> out = new ArrayList<>();
+                for (MessageDto d : list) {
+                    out.add(mapMessage(d));
+                }
+                cb.onSuccess(out);
             }
-            cb.onSuccess(out);
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
         });
     }
 
     public void getStudent(long studentId, RepoCallback<Student> cb) {
-        enqueue(api.getStudent(studentId), d -> cb.onSuccess(mapStudent(d)));
+        enqueue(api.getStudent(studentId), new RepoCallback<StudentDto>() {
+            @Override
+            public void onSuccess(StudentDto d) {
+                cb.onSuccess(mapStudent(d));
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
+        });
     }
 
     public void uploadLocalFile(String localPath, RepoCallback<String> cb) {
@@ -270,7 +381,8 @@ public class AulaRepository {
                 main.post(() -> cb.onError("Archivo no encontrado"));
                 return;
             }
-            RequestBody body = RequestBody.create(file, MediaType.parse("application/octet-stream"));
+            MediaType octet = MediaType.parse("application/octet-stream");
+            RequestBody body = RequestBody.create(octet, file);
             MultipartBody.Part part = MultipartBody.Part.createFormData("file", file.getName(), body);
             try {
                 Response<UploadResponse> response = api.upload(part).execute();

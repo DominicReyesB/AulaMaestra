@@ -12,9 +12,8 @@ android {
         targetSdk 35
         versionCode 1
         versionName "1.0"
-        // HTTPS del servicio Node en Railway (Settings → Networking → Public domain).
-        // NO uses mysql:// aquí; esa URL va solo en Railway → servicio API → Variables → MYSQL_URL.
-        buildConfigField "String", "API_BASE_URL", '"https://railway.com/project/467be906-7cfb-469f-891b-60f474a76a67/service/7a7e274a-b5be-43bc-b35c-a4a4943407bc/variables?environmentId=221195af-86b3-4671-bd57-e0b7021cffa3/"'
+        // URL pública del API en Railway (termina en /)
+        buildConfigField "String", "API_BASE_URL", '"https://aulamaestra-production.up.railway.app/"'
     }
 
     buildFeatures {

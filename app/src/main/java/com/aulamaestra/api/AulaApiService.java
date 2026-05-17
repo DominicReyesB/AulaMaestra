@@ -11,6 +11,8 @@ import com.aulamaestra.api.dto.PostCreateRequest;
 import com.aulamaestra.api.dto.PostDto;
 import com.aulamaestra.api.dto.SalonDto;
 import com.aulamaestra.api.dto.StudentDto;
+import com.aulamaestra.api.dto.StudentJoinRequest;
+import com.aulamaestra.api.dto.StudentJoinResponse;
 import com.aulamaestra.api.dto.StudentNameRequest;
 import com.aulamaestra.api.dto.SubmissionCreateRequest;
 import com.aulamaestra.api.dto.SubmissionDto;
@@ -47,6 +49,9 @@ public interface AulaApiService {
 
     @POST("api/students")
     Call<IdResponse> createStudent(@Body StudentNameRequest body);
+
+    @POST("api/students/join-salon")
+    Call<StudentJoinResponse> joinSalon(@Body StudentJoinRequest body);
 
     @PUT("api/students/{studentId}")
     Call<OkResponse> updateStudent(@Path("studentId") long studentId, @Body StudentNameRequest body);

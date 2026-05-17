@@ -12,7 +12,6 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
 import com.aulamaestra.db.RepoCallback;
-import com.aulamaestra.db.SessionManager;
 import com.aulamaestra.model.Salon;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.tabs.TabLayout;
@@ -39,8 +38,7 @@ public class StudentSalonActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(v -> {
-            SessionManager sm = new SessionManager(this);
-            sm.clearStudent();
+            // Volver al inicio sin borrar la sesión del alumno (evita duplicados al regresar).
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });

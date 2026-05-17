@@ -72,7 +72,34 @@ function messageRow(r) {
   };
 }
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    message: 'API Aula Maestra en línea. Prueba /health',
+    health: '/health',
+  });
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true, db: 'mysql' }));
+
+app.get('/api/stats', async (_req, res) => {
+  try {
+    const teachers = await query('SELECT COUNT(*) AS n FROM teachers');
+    const students = await query('SELECT COUNT(*) AS n FROM students');
+    const salons = await query('SELECT COUNT(*) AS n FROM salons');
+    const posts = await query('SELECT COUNT(*) AS n FROM posts');
+    res.json({
+      ok: true,
+      teachers: Number(teachers[0].n),
+      students: Number(students[0].n),
+      salons: Number(salons[0].n),
+      posts: Number(posts[0].n),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo leer la base de datos' });
+  }
+});
 
 app.post('/api/teachers/register', async (req, res) => {
   try {
@@ -157,6 +184,68 @@ app.post('/api/students', async (req, res) => {
     if (!displayName) return res.status(400).json({ error: 'Nombre requerido' });
     const result = await execute('INSERT INTO students (display_name) VALUES (?)', [displayName]);
     res.json({ id: Number(result.insertId) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+app.post('/api/students/join-salon', async (req, res) => {
+  try {
+    const inviteCode = String(req.body.inviteCode || '').trim().toUpperCase();
+    const displayName = String(req.body.displayName || '').trim();
+    const studentId = req.body.studentId != null ? Number(req.body.studentId) : null;
+
+    if (!inviteCode) {
+      return res.status(400).json({ error: 'Código del salón requerido' });
+    }
+
+    const salonRows = await query('SELECT * FROM salons WHERE invite_code = ?', [inviteCode]);
+    if (salonRows.length === 0) {
+      return res.status(404).json({ error: 'Código no válido' });
+    }
+    const salon = salonRows[0];
+
+    let finalStudentId = studentId;
+    let finalName = displayName;
+
+    if (finalStudentId != null && finalStudentId > 0) {
+      const st = await query('SELECT id, display_name FROM students WHERE id = ?', [finalStudentId]);
+      if (st.length === 0) {
+        return res.status(404).json({ error: 'No encontramos tu registro. Regístrate de nuevo en este dispositivo.' });
+      }
+      finalName = st[0].display_name;
+    } else {
+      if (!finalName) {
+        return res.status(400).json({ error: 'Escribe tu nombre para registrarte' });
+      }
+      const dup = await query(
+        `SELECT s.id, s.display_name FROM students s
+         INNER JOIN enrollments e ON e.student_id = s.id
+         WHERE e.salon_id = ? AND LOWER(TRIM(s.display_name)) = LOWER(TRIM(?))`,
+        [salon.id, finalName]
+      );
+      if (dup.length > 0) {
+        return res.status(409).json({
+          error: 'Ya existe un alumno con ese nombre en este salón. Si eres tú, usa Iniciar sesión.',
+          studentId: Number(dup[0].id),
+        });
+      }
+      const created = await execute('INSERT INTO students (display_name) VALUES (?)', [finalName]);
+      finalStudentId = Number(created.insertId);
+    }
+
+    await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
+      finalStudentId,
+      salon.id,
+    ]);
+
+    res.json({
+      studentId: finalStudentId,
+      salonId: Number(salon.id),
+      displayName: finalName,
+      salonNumber: salon.salon_number,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });

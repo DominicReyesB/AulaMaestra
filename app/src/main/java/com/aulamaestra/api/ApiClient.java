@@ -25,7 +25,10 @@ public final class ApiClient {
                     .writeTimeout(60, TimeUnit.SECONDS)
                     .addInterceptor(log)
                     .build();
-            String base = BuildConfig.API_BASE_URL;
+            String base = BuildConfig.API_BASE_URL.trim();
+            if (!base.startsWith("http://") && !base.startsWith("https://")) {
+                base = "https://" + base;
+            }
             if (!base.endsWith("/")) {
                 base = base + "/";
             }
