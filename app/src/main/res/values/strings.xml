@@ -11,9 +11,12 @@
     <string name="student_name">Tu nombre</string>
     <string name="join_class">Registrarme en el salón</string>
     <string name="student_welcome_back">Hola, %1$s</string>
-    <string name="student_return_hint">Ya estás registrado en este dispositivo. Solo entra con el código del salón.</string>
+    <string name="student_return_hint">Entrada rápida en este celular (solo código del salón).</string>
     <string name="student_login">Iniciar sesión</string>
-    <string name="student_logout">Cambiar de alumno</string>
+    <string name="student_logout">Registrar a otro alumno en este celular</string>
+    <string name="student_login_section">Ya me registré antes</string>
+    <string name="student_login_hint">Mismo código y el mismo nombre exacto con el que te registraste la primera vez.</string>
+    <string name="student_register_section">Primera vez en el salón</string>
     <string name="student_already_registered">Ya estás registrado. Usa «Iniciar sesión».</string>
     <string name="student_not_registered">Primero regístrate con el código del salón.</string>
     <string name="salons_title">Mis salones</string>

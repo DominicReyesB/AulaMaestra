@@ -190,11 +190,37 @@ app.post('/api/students', async (req, res) => {
   }
 });
 
+/** Busca alumno por nombre: primero inscrito en el salón; si no, fila en students (datos viejos sin enrollment). */
+async function findStudentByNameForSalon(salonId, displayName) {
+  const enrolled = await query(
+    `SELECT s.id, s.display_name FROM students s
+     INNER JOIN enrollments e ON e.student_id = s.id AND e.salon_id = ?
+     WHERE LOWER(TRIM(s.display_name)) = LOWER(TRIM(?))
+     ORDER BY s.id ASC`,
+    [salonId, displayName]
+  );
+  if (enrolled.length > 0) {
+    return enrolled[0];
+  }
+
+  const byName = await query(
+    `SELECT id, display_name FROM students
+     WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))
+     ORDER BY id DESC`,
+    [displayName]
+  );
+  if (byName.length === 0) {
+    return null;
+  }
+  return byName[0];
+}
+
 app.post('/api/students/join-salon', async (req, res) => {
   try {
     const inviteCode = String(req.body.inviteCode || '').trim().toUpperCase();
     const displayName = String(req.body.displayName || '').trim();
     const studentId = req.body.studentId != null ? Number(req.body.studentId) : null;
+    const mode = String(req.body.mode || 'register').toLowerCase();
 
     if (!inviteCode) {
       return res.status(400).json({ error: 'Código del salón requerido' });
@@ -212,27 +238,34 @@ app.post('/api/students/join-salon', async (req, res) => {
     if (finalStudentId != null && finalStudentId > 0) {
       const st = await query('SELECT id, display_name FROM students WHERE id = ?', [finalStudentId]);
       if (st.length === 0) {
-        return res.status(404).json({ error: 'No encontramos tu registro. Regístrate de nuevo en este dispositivo.' });
+        return res.status(404).json({ error: 'No encontramos tu registro. Usa tu nombre en Iniciar sesión.' });
       }
       finalName = st[0].display_name;
     } else {
       if (!finalName) {
-        return res.status(400).json({ error: 'Escribe tu nombre para registrarte' });
-      }
-      const dup = await query(
-        `SELECT s.id, s.display_name FROM students s
-         INNER JOIN enrollments e ON e.student_id = s.id
-         WHERE e.salon_id = ? AND LOWER(TRIM(s.display_name)) = LOWER(TRIM(?))`,
-        [salon.id, finalName]
-      );
-      if (dup.length > 0) {
-        return res.status(409).json({
-          error: 'Ya existe un alumno con ese nombre en este salón. Si eres tú, usa Iniciar sesión.',
-          studentId: Number(dup[0].id),
+        return res.status(400).json({
+          error: mode === 'login' ? 'Escribe el nombre con el que te registraste' : 'Escribe tu nombre para registrarte',
         });
       }
-      const created = await execute('INSERT INTO students (display_name) VALUES (?)', [finalName]);
-      finalStudentId = Number(created.insertId);
+
+      const existing = await findStudentByNameForSalon(salon.id, finalName);
+
+      if (mode === 'login') {
+        if (!existing) {
+          return res.status(404).json({
+            error: 'No hay ningún alumno con ese nombre. Regístrate la primera vez abajo.',
+          });
+        }
+        finalStudentId = Number(existing.id);
+        finalName = existing.display_name;
+      } else if (existing) {
+        // Registro idempotente: ya existe → entrar sin crear duplicado
+        finalStudentId = Number(existing.id);
+        finalName = existing.display_name;
+      } else {
+        const created = await execute('INSERT INTO students (display_name) VALUES (?)', [finalName]);
+        finalStudentId = Number(created.insertId);
+      }
     }
 
     await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [

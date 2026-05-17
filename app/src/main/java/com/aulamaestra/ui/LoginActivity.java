@@ -18,17 +18,24 @@ import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 
 public class LoginActivity extends AppCompatActivity {
+    private static final String MODE_LOGIN = "login";
+    private static final String MODE_REGISTER = "register";
+
     private final AulaRepository repo = AulaRepository.get();
     private SessionManager session;
     private View teacherBox;
     private View studentBox;
     private View studentReturnBox;
+    private View studentLoginBox;
     private View studentRegisterBox;
     private TextView textStudentWelcome;
+    private TextView textRegisterSection;
     private TextInputEditText inputUser;
     private TextInputEditText inputPass;
     private TextInputEditText inputCode;
     private TextInputEditText inputCodeReturn;
+    private TextInputEditText inputLoginCode;
+    private TextInputEditText inputLoginName;
     private TextInputEditText inputStudentName;
 
     @Override
@@ -40,12 +47,16 @@ public class LoginActivity extends AppCompatActivity {
         teacherBox = findViewById(R.id.teacherBox);
         studentBox = findViewById(R.id.studentBox);
         studentReturnBox = findViewById(R.id.studentReturnBox);
+        studentLoginBox = findViewById(R.id.studentLoginBox);
         studentRegisterBox = findViewById(R.id.studentRegisterBox);
         textStudentWelcome = findViewById(R.id.textStudentWelcome);
+        textRegisterSection = findViewById(R.id.textRegisterSection);
         inputUser = findViewById(R.id.inputUser);
         inputPass = findViewById(R.id.inputPass);
         inputCode = findViewById(R.id.inputCode);
         inputCodeReturn = findViewById(R.id.inputCodeReturn);
+        inputLoginCode = findViewById(R.id.inputLoginCode);
+        inputLoginName = findViewById(R.id.inputLoginName);
         inputStudentName = findViewById(R.id.inputStudentName);
 
         MaterialButtonToggleGroup roleToggle = findViewById(R.id.roleToggle);
@@ -66,24 +77,33 @@ public class LoginActivity extends AppCompatActivity {
         findViewById(R.id.btnLoginTeacher).setOnClickListener(v -> loginTeacher());
         findViewById(R.id.btnRegisterTeacher).setOnClickListener(v -> registerTeacher());
         findViewById(R.id.btnJoinStudent).setOnClickListener(v -> registerAsStudent());
-        findViewById(R.id.btnStudentLogin).setOnClickListener(v -> loginAsStudent());
+        findViewById(R.id.btnStudentLogin).setOnClickListener(v -> loginQuickOnDevice());
+        findViewById(R.id.btnStudentLoginByName).setOnClickListener(v -> loginByName());
         findViewById(R.id.btnStudentLogout).setOnClickListener(v -> {
             session.clearStudent();
+            inputCodeReturn.setText("");
+            inputLoginCode.setText("");
+            inputLoginName.setText("");
+            inputCode.setText("");
+            inputStudentName.setText("");
             updateStudentUi();
-            Toast.makeText(this, "Puedes registrarte con otro nombre", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Ahora puedes registrar a otro alumno o entrar con nombre", Toast.LENGTH_SHORT).show();
         });
 
         updateStudentUi();
     }
 
     private void updateStudentUi() {
-        if (session.hasStudentSession()) {
-            studentReturnBox.setVisibility(View.VISIBLE);
-            studentRegisterBox.setVisibility(View.GONE);
+        boolean saved = session.hasStudentSession();
+        studentReturnBox.setVisibility(saved ? View.VISIBLE : View.GONE);
+        studentLoginBox.setVisibility(View.VISIBLE);
+        studentRegisterBox.setVisibility(View.VISIBLE);
+
+        if (saved) {
             textStudentWelcome.setText(getString(R.string.student_welcome_back, session.getStudentName()));
+            textRegisterSection.setText("Otro alumno nuevo en este celular");
         } else {
-            studentReturnBox.setVisibility(View.GONE);
-            studentRegisterBox.setVisibility(View.VISIBLE);
+            textRegisterSection.setText(getString(R.string.student_register_section));
         }
     }
 
@@ -132,23 +152,10 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void registerAsStudent() {
-        if (session.hasStudentSession()) {
-            Toast.makeText(this, R.string.student_already_registered, Toast.LENGTH_LONG).show();
-            return;
-        }
-        String code = textOf(inputCode);
-        String name = textOf(inputStudentName);
-        if (code.isEmpty() || name.isEmpty()) {
-            Toast.makeText(this, "Código y nombre son obligatorios", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        joinSalon(code, name, null);
-    }
-
-    private void loginAsStudent() {
+    /** Entrada rápida: ya hay perfil guardado en este celular. */
+    private void loginQuickOnDevice() {
         if (!session.hasStudentSession()) {
-            Toast.makeText(this, R.string.student_not_registered, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Usa «Iniciar sesión» con tu nombre abajo", Toast.LENGTH_LONG).show();
             return;
         }
         String code = textOf(inputCodeReturn);
@@ -156,11 +163,41 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(this, "Escribe el código del salón", Toast.LENGTH_SHORT).show();
             return;
         }
-        joinSalon(code, null, session.getStudentId());
+        joinSalon(code, null, session.getStudentId(), MODE_LOGIN);
     }
 
-    private void joinSalon(String code, String name, Long studentId) {
-        repo.joinSalon(code, name, studentId, new RepoCallback<StudentJoinResult>() {
+    /** Volver a entrar: código + mismo nombre de la primera vez. */
+    private void loginByName() {
+        String code = textOf(inputLoginCode);
+        String name = textOf(inputLoginName);
+        if (code.isEmpty() || name.isEmpty()) {
+            Toast.makeText(this, "Código y nombre son obligatorios", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Si aún hay id guardado y el nombre coincide, el servidor lo resuelve más rápido.
+        Long savedId = session.hasStudentSession()
+                && name.equalsIgnoreCase(session.getStudentName())
+                ? session.getStudentId()
+                : null;
+        joinSalon(code, name, savedId, MODE_LOGIN);
+    }
+
+    private void registerAsStudent() {
+        String code = textOf(inputCode);
+        String name = textOf(inputStudentName);
+        if (code.isEmpty() || name.isEmpty()) {
+            Toast.makeText(this, "Código y nombre son obligatorios", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        joinSalon(code, name, null, MODE_REGISTER);
+    }
+
+    private void joinSalon(String code, String name, Long studentId, String mode) {
+        joinSalon(code, name, studentId, mode, false);
+    }
+
+    private void joinSalon(String code, String name, Long studentId, String mode, boolean retried) {
+        repo.joinSalon(code, name, studentId, mode, new RepoCallback<StudentJoinResult>() {
             @Override
             public void onSuccess(StudentJoinResult result) {
                 session.saveStudentSession(result.studentId, result.displayName, result.salonId);
@@ -169,6 +206,13 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
+                // Servidor antiguo: "login" falla pero el alumno ya existe → reintentar como registro.
+                if (!retried && MODE_LOGIN.equals(mode) && studentId == null
+                        && (message.contains("Ya existe") || message.contains("Iniciar sesión")
+                        || message.contains("No estás registrado"))) {
+                    joinSalon(code, name, null, MODE_REGISTER, true);
+                    return;
+                }
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });

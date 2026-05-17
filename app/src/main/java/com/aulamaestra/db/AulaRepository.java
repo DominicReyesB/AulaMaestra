@@ -226,9 +226,9 @@ public class AulaRepository {
         enqueueId(api.createStudent(new StudentNameRequest(name)), cb);
     }
 
-    public void joinSalon(String inviteCode, String displayName, Long existingStudentId,
+    public void joinSalon(String inviteCode, String displayName, Long existingStudentId, String mode,
                           RepoCallback<StudentJoinResult> cb) {
-        enqueue(api.joinSalon(new StudentJoinRequest(inviteCode, displayName, existingStudentId)),
+        enqueue(api.joinSalon(new StudentJoinRequest(inviteCode, displayName, existingStudentId, mode)),
                 new RepoCallback<StudentJoinResponse>() {
                     @Override
                     public void onSuccess(StudentJoinResponse r) {
