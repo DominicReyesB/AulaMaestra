@@ -64,7 +64,8 @@ public class LoginActivity extends AppCompatActivity {
 
         findViewById(R.id.btnLoginTeacher).setOnClickListener(v -> loginTeacher());
         findViewById(R.id.btnRegisterTeacher).setOnClickListener(v -> registerTeacher());
-        findViewById(R.id.btnEnterStudent).setOnClickListener(v -> enterStudentSalon());
+        findViewById(R.id.btnEnterStudent).setOnClickListener(v -> loginStudent());
+        findViewById(R.id.btnRegisterStudent).setOnClickListener(v -> registerStudent());
         btnSwitchStudent.setOnClickListener(v -> {
             session.clearStudent();
             inputStudentCode.setText("");
@@ -135,8 +136,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    /** Un solo paso: código + nombre. El servidor registra o entra según corresponda. */
-    private void enterStudentSalon() {
+    private void loginStudent() {
         String code = textOf(inputStudentCode);
         String name = textOf(inputStudentName);
         if (code.isEmpty() || name.isEmpty()) {
@@ -147,6 +147,16 @@ public class LoginActivity extends AppCompatActivity {
                 ? session.getStudentId()
                 : null;
         joinSalon(code, name, savedId, MODE_LOGIN);
+    }
+
+    private void registerStudent() {
+        String code = textOf(inputStudentCode);
+        String name = textOf(inputStudentName);
+        if (code.isEmpty() || name.isEmpty()) {
+            Toast.makeText(this, R.string.student_fill_fields, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        joinSalon(code, name, null, MODE_REGISTER);
     }
 
     private void joinSalon(String code, String name, Long studentId, String mode) {
@@ -166,7 +176,7 @@ public class LoginActivity extends AppCompatActivity {
                 if (!retried && MODE_LOGIN.equals(mode)
                         && (message.contains("Ya existe") || message.contains("No estás registrado")
                         || message.contains("No hay ningún alumno"))) {
-                    joinSalon(code, name, null, MODE_REGISTER, true);
+                    Toast.makeText(LoginActivity.this, R.string.student_try_register, Toast.LENGTH_LONG).show();
                     return;
                 }
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();

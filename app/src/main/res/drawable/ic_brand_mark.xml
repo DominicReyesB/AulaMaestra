@@ -11,6 +11,6 @@
         android:fillColor="@color/secondary"
         android:pathData="M18,6h2a1,1 0,0 1,1,1v14a1,1 0,0 1,-1,1h-2V6z" />
     <path
-        android:fillColor="@color/tertiary"
+        android:fillColor="@color/tertiary_container"
         android:pathData="M8,8h6v1.5H8zM8,11h5v1.5H8zM8,14h6v1.5H8z" />
 </vector>

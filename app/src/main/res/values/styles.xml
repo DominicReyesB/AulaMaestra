@@ -67,7 +67,7 @@
 
     <style name="Widget.Aula.Fab" parent="Widget.Material3.FloatingActionButton.Primary">
         <item name="backgroundTint">@color/secondary</item>
-        <item name="tint">@color/on_secondary</item>
+        <item name="tint">@color/on_primary</item>
         <item name="elevation">8dp</item>
     </style>
 

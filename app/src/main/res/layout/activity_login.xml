@@ -139,11 +139,11 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_md"
-                        android:background="@drawable/bg_chip_file"
+                        android:background="@drawable/bg_chip_assignment"
                         android:gravity="center"
                         android:padding="@dimen/space_sm"
                         android:textAppearance="?attr/textAppearanceTitleSmall"
-                        android:textColor="@color/chip_file_text"
+                        android:textColor="@color/chip_assignment_text"
                         android:visibility="gone" />
 
                     <TextView
@@ -188,7 +188,15 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_md"
-                        android:text="@string/student_enter" />
+                        android:text="@string/student_login" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRegisterStudent"
+                        style="@style/Widget.Aula.Button.Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_sm"
+                        android:text="@string/student_register" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSwitchStudent"
