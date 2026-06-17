@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Aula Maestra</string>
+    <string name="login_tagline">Tu aula en el bolsillo</string>
+    <string name="salons_subtitle">Salones 601 – 605</string>
+    <string name="salon_open_hint">Toca para administrar</string>
+    <string name="empty_list">Nada por aquí todavía</string>
+    <string name="student_chat_intro">Escribe a tu maestra cuando lo necesites. Ella también puede escribirte.</string>
     <string name="role_teacher">Soy maestra</string>
     <string name="role_student">Soy alumno</string>
     <string name="username">Usuario</string>
     <string name="password">Contraseña</string>
     <string name="login">Entrar</string>
-    <string name="register">Crear cuenta</string>
+    <string name="register_teacher_hint">¿Primera vez? Crear cuenta de maestra</string>
+    <string name="login_fill_fields">Completa usuario y contraseña</string>
+    <string name="register_ok">Cuenta creada</string>
+    <string name="student_enter">Entrar al salón</string>
+    <string name="student_simple_hint">Código del salón y tu nombre. Si ya entraste antes, usa el mismo nombre.</string>
+    <string name="student_fill_fields">Escribe el código y tu nombre</string>
+    <string name="student_switch">Usar otro alumno en este celular</string>
     <string name="student_code">Código del salón</string>
     <string name="student_name">Tu nombre</string>
     <string name="join_class">Registrarme en el salón</string>

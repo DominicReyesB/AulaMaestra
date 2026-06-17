@@ -25,17 +25,11 @@ public class LoginActivity extends AppCompatActivity {
     private SessionManager session;
     private View teacherBox;
     private View studentBox;
-    private View studentReturnBox;
-    private View studentLoginBox;
-    private View studentRegisterBox;
     private TextView textStudentWelcome;
-    private TextView textRegisterSection;
+    private View btnSwitchStudent;
     private TextInputEditText inputUser;
     private TextInputEditText inputPass;
-    private TextInputEditText inputCode;
-    private TextInputEditText inputCodeReturn;
-    private TextInputEditText inputLoginCode;
-    private TextInputEditText inputLoginName;
+    private TextInputEditText inputStudentCode;
     private TextInputEditText inputStudentName;
 
     @Override
@@ -46,17 +40,11 @@ public class LoginActivity extends AppCompatActivity {
 
         teacherBox = findViewById(R.id.teacherBox);
         studentBox = findViewById(R.id.studentBox);
-        studentReturnBox = findViewById(R.id.studentReturnBox);
-        studentLoginBox = findViewById(R.id.studentLoginBox);
-        studentRegisterBox = findViewById(R.id.studentRegisterBox);
         textStudentWelcome = findViewById(R.id.textStudentWelcome);
-        textRegisterSection = findViewById(R.id.textRegisterSection);
+        btnSwitchStudent = findViewById(R.id.btnSwitchStudent);
         inputUser = findViewById(R.id.inputUser);
         inputPass = findViewById(R.id.inputPass);
-        inputCode = findViewById(R.id.inputCode);
-        inputCodeReturn = findViewById(R.id.inputCodeReturn);
-        inputLoginCode = findViewById(R.id.inputLoginCode);
-        inputLoginName = findViewById(R.id.inputLoginName);
+        inputStudentCode = findViewById(R.id.inputStudentCode);
         inputStudentName = findViewById(R.id.inputStudentName);
 
         MaterialButtonToggleGroup roleToggle = findViewById(R.id.roleToggle);
@@ -76,18 +64,12 @@ public class LoginActivity extends AppCompatActivity {
 
         findViewById(R.id.btnLoginTeacher).setOnClickListener(v -> loginTeacher());
         findViewById(R.id.btnRegisterTeacher).setOnClickListener(v -> registerTeacher());
-        findViewById(R.id.btnJoinStudent).setOnClickListener(v -> registerAsStudent());
-        findViewById(R.id.btnStudentLogin).setOnClickListener(v -> loginQuickOnDevice());
-        findViewById(R.id.btnStudentLoginByName).setOnClickListener(v -> loginByName());
-        findViewById(R.id.btnStudentLogout).setOnClickListener(v -> {
+        findViewById(R.id.btnEnterStudent).setOnClickListener(v -> enterStudentSalon());
+        btnSwitchStudent.setOnClickListener(v -> {
             session.clearStudent();
-            inputCodeReturn.setText("");
-            inputLoginCode.setText("");
-            inputLoginName.setText("");
-            inputCode.setText("");
+            inputStudentCode.setText("");
             inputStudentName.setText("");
             updateStudentUi();
-            Toast.makeText(this, "Ahora puedes registrar a otro alumno o entrar con nombre", Toast.LENGTH_SHORT).show();
         });
 
         updateStudentUi();
@@ -95,15 +77,16 @@ public class LoginActivity extends AppCompatActivity {
 
     private void updateStudentUi() {
         boolean saved = session.hasStudentSession();
-        studentReturnBox.setVisibility(saved ? View.VISIBLE : View.GONE);
-        studentLoginBox.setVisibility(View.VISIBLE);
-        studentRegisterBox.setVisibility(View.VISIBLE);
-
         if (saved) {
+            textStudentWelcome.setVisibility(View.VISIBLE);
             textStudentWelcome.setText(getString(R.string.student_welcome_back, session.getStudentName()));
-            textRegisterSection.setText("Otro alumno nuevo en este celular");
+            btnSwitchStudent.setVisibility(View.VISIBLE);
+            if (textOf(inputStudentName).isEmpty()) {
+                inputStudentName.setText(session.getStudentName());
+            }
         } else {
-            textRegisterSection.setText(getString(R.string.student_register_section));
+            textStudentWelcome.setVisibility(View.GONE);
+            btnSwitchStudent.setVisibility(View.GONE);
         }
     }
 
@@ -111,7 +94,7 @@ public class LoginActivity extends AppCompatActivity {
         String u = textOf(inputUser);
         String p = textOf(inputPass);
         if (u.isEmpty() || p.isEmpty()) {
-            Toast.makeText(this, "Completa usuario y contraseña", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.login_fill_fields, Toast.LENGTH_SHORT).show();
             return;
         }
         repo.loginTeacher(u, p, new RepoCallback<Long>() {
@@ -133,14 +116,14 @@ public class LoginActivity extends AppCompatActivity {
         String u = textOf(inputUser);
         String p = textOf(inputPass);
         if (u.isEmpty() || p.isEmpty()) {
-            Toast.makeText(this, "Elige usuario y contraseña", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.login_fill_fields, Toast.LENGTH_SHORT).show();
             return;
         }
         repo.registerTeacher(u, p, new RepoCallback<Long>() {
             @Override
             public void onSuccess(Long id) {
                 session.setTeacherId(id);
-                Toast.makeText(LoginActivity.this, "Cuenta creada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, R.string.register_ok, Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(LoginActivity.this, TeacherSalonsActivity.class));
                 finish();
             }
@@ -152,44 +135,18 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    /** Entrada rápida: ya hay perfil guardado en este celular. */
-    private void loginQuickOnDevice() {
-        if (!session.hasStudentSession()) {
-            Toast.makeText(this, "Usa «Iniciar sesión» con tu nombre abajo", Toast.LENGTH_LONG).show();
-            return;
-        }
-        String code = textOf(inputCodeReturn);
-        if (code.isEmpty()) {
-            Toast.makeText(this, "Escribe el código del salón", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        joinSalon(code, null, session.getStudentId(), MODE_LOGIN);
-    }
-
-    /** Volver a entrar: código + mismo nombre de la primera vez. */
-    private void loginByName() {
-        String code = textOf(inputLoginCode);
-        String name = textOf(inputLoginName);
+    /** Un solo paso: código + nombre. El servidor registra o entra según corresponda. */
+    private void enterStudentSalon() {
+        String code = textOf(inputStudentCode);
+        String name = textOf(inputStudentName);
         if (code.isEmpty() || name.isEmpty()) {
-            Toast.makeText(this, "Código y nombre son obligatorios", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.student_fill_fields, Toast.LENGTH_SHORT).show();
             return;
         }
-        // Si aún hay id guardado y el nombre coincide, el servidor lo resuelve más rápido.
-        Long savedId = session.hasStudentSession()
-                && name.equalsIgnoreCase(session.getStudentName())
+        Long savedId = session.hasStudentSession() && name.equalsIgnoreCase(session.getStudentName())
                 ? session.getStudentId()
                 : null;
         joinSalon(code, name, savedId, MODE_LOGIN);
-    }
-
-    private void registerAsStudent() {
-        String code = textOf(inputCode);
-        String name = textOf(inputStudentName);
-        if (code.isEmpty() || name.isEmpty()) {
-            Toast.makeText(this, "Código y nombre son obligatorios", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        joinSalon(code, name, null, MODE_REGISTER);
     }
 
     private void joinSalon(String code, String name, Long studentId, String mode) {
@@ -206,10 +163,9 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
-                // Servidor antiguo: "login" falla pero el alumno ya existe → reintentar como registro.
-                if (!retried && MODE_LOGIN.equals(mode) && studentId == null
-                        && (message.contains("Ya existe") || message.contains("Iniciar sesión")
-                        || message.contains("No estás registrado"))) {
+                if (!retried && MODE_LOGIN.equals(mode)
+                        && (message.contains("Ya existe") || message.contains("No estás registrado")
+                        || message.contains("No hay ningún alumno"))) {
                     joinSalon(code, name, null, MODE_REGISTER, true);
                     return;
                 }
