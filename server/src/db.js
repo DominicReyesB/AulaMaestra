@@ -51,6 +51,22 @@ async function initDb() {
   for (const stmt of statements) {
     await pool.query(stmt);
   }
+  await migrateDb();
+}
+
+async function migrateDb() {
+  const alters = [
+    'ALTER TABLE students ADD COLUMN password VARCHAR(255) NULL',
+    'ALTER TABLE submissions ADD COLUMN link_url TEXT NULL',
+    'ALTER TABLE submissions ADD COLUMN attachments_json TEXT NULL',
+  ];
+  for (const sql of alters) {
+    try {
+      await pool.query(sql);
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+  }
 }
 
 function randomCode() {

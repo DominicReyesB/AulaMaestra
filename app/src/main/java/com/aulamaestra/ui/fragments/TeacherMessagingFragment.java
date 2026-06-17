@@ -130,6 +130,10 @@ public class TeacherMessagingFragment extends Fragment {
         public void onBindViewHolder(@NonNull VH h, int position) {
             Student s = data.get(position);
             h.name.setText(s.displayName);
+            String initial = s.displayName != null && !s.displayName.isEmpty()
+                    ? s.displayName.substring(0, 1).toUpperCase()
+                    : "?";
+            h.avatar.setText(initial);
             h.chat.setOnClickListener(v -> openChat.onOpen(s));
         }
 
@@ -139,11 +143,13 @@ public class TeacherMessagingFragment extends Fragment {
         }
 
         static class VH extends RecyclerView.ViewHolder {
+            final TextView avatar;
             final TextView name;
             final View chat;
 
             VH(@NonNull View itemView) {
                 super(itemView);
+                avatar = itemView.findViewById(R.id.textAvatarInitial);
                 name = itemView.findViewById(R.id.textStudentName);
                 chat = itemView.findViewById(R.id.btnChat);
             }

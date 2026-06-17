@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="@dimen/space_lg">
 
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/typeGroup"
@@ -15,7 +15,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/typeAnnouncement"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.Aula.Button.Outlined"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -23,7 +23,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/typeAssignment"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.Aula.Button.Outlined"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -31,7 +31,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/typeFile"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.Aula.Button.Outlined"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -39,9 +39,10 @@
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Aula.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/space_md"
         android:hint="@string/title_hint">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -51,9 +52,10 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Aula.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/space_sm"
         android:hint="@string/body_hint">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -66,7 +68,7 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnPickFile"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
+        style="@style/Widget.Aula.Button.Text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/attach_file" />
@@ -75,5 +77,6 @@
         android:id="@+id/textPickedFile"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceBodySmall" />
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/on_surface_variant" />
 </LinearLayout>

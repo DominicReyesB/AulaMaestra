@@ -61,6 +61,7 @@ public class StudentSalonActivity extends AppCompatActivity {
         TabLayout tabs = findViewById(R.id.tabs);
         String[] titles = {
                 getString(R.string.tab_classroom),
+                getString(R.string.tab_assignments),
                 getString(R.string.tab_my_work),
                 getString(R.string.tab_messages)
         };

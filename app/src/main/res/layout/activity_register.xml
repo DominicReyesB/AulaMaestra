@@ -16,7 +16,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="32dp"
             android:background="@drawable/bg_auth_card"
             android:elevation="8dp"
             android:gravity="center_horizontal"
@@ -24,8 +24,8 @@
             android:padding="@dimen/space_xl">
 
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
                 android:contentDescription="@string/app_name"
                 android:src="@drawable/ic_launcher_legacy" />
 
@@ -34,7 +34,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_md"
-                android:text="@string/login_title"
+                android:text="@string/register_title"
                 android:textSize="22sp" />
 
             <TextView
@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_xs"
                 android:gravity="center"
-                android:text="@string/login_subtitle"
+                android:text="@string/register_subtitle"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="@color/on_surface_variant" />
 
@@ -58,11 +58,10 @@
                 style="@style/Widget.Aula.TextInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_xs"
-                app:boxBackgroundMode="outline">
+                android:layout_marginTop="@dimen/space_xs">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/inputUser"
+                    android:id="@+id/inputRegUser"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textPersonName" />
@@ -81,30 +80,93 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_xs"
-                app:endIconMode="password_toggle"
-                app:boxBackgroundMode="outline">
+                app:endIconMode="password_toggle">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/inputPass"
+                    android:id="@+id/inputRegPass"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textPassword" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLogin"
-                style="@style/Widget.Aula.Button"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/login" />
+                android:text="@string/register_role_label"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="@color/on_surface" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/roleToggle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_sm"
+                app:checkedButton="@+id/btnRoleStudent"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRoleTeacher"
+                    style="@style/Widget.Aula.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="72dp"
+                    android:layout_weight="1"
+                    android:text="@string/role_teacher" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRoleStudent"
+                    style="@style/Widget.Aula.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="72dp"
+                    android:layout_weight="1"
+                    android:text="@string/role_student" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <LinearLayout
+                android:id="@+id/studentCodeBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:text="@string/student_code"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="@color/on_surface" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Aula.TextInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:hint="@string/student_code_hint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/inputRegCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapCharacters" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGoRegister"
+                android:id="@+id/btnRegister"
+                style="@style/Widget.Aula.Button.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_lg"
+                android:text="@string/register_action" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGoLogin"
                 style="@style/Widget.Aula.Button.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/go_register" />
+                android:text="@string/go_login" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

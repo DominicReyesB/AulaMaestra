@@ -17,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import androidx.core.content.ContextCompat;
+
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
 import com.aulamaestra.db.RepoCallback;
@@ -153,6 +155,13 @@ public class MessageThreadActivity extends AppCompatActivity {
             ChatMessage m = data.get(position);
             boolean mine = viewerIsTeacher ? m.fromTeacher : !m.fromTeacher;
             h.bubble.setText(m.body);
+            if (mine) {
+                h.bubble.setBackgroundResource(R.drawable.bg_chat_bubble_sent);
+                h.bubble.setTextColor(ContextCompat.getColor(h.bubble.getContext(), R.color.chat_sent_text));
+            } else {
+                h.bubble.setBackgroundResource(R.drawable.bg_chat_bubble_received);
+                h.bubble.setTextColor(ContextCompat.getColor(h.bubble.getContext(), R.color.chat_received_text));
+            }
             String who = m.fromTeacher ? "Maestra" : "Alumno";
             h.meta.setText(who + " · " + fmt.format(new Date(m.createdAt)));
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.row.getLayoutParams();

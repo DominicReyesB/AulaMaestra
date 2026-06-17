@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
     cb(null, safe);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 function salonRow(r) {
   return {
@@ -57,6 +57,8 @@ function submissionRow(r) {
     studentName: r.student_name,
     textAnswer: r.text_answer,
     filePath: r.file_path,
+    linkUrl: r.link_url,
+    attachmentsJson: r.attachments_json,
     submittedAt: Number(r.submitted_at),
     score: r.score == null ? null : Number(r.score),
     feedback: r.feedback,
@@ -136,6 +138,107 @@ app.post('/api/teachers/login', async (req, res) => {
     const teacherId = rows[0].id;
     await ensureSalonsForTeacher(teacherId);
     res.json({ id: Number(teacherId) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+/** Login unificado: nombre + contraseña (maestra o alumno). */
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const username = String(req.body.username || req.body.displayName || '').trim();
+    const password = String(req.body.password || '');
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Nombre y contraseña requeridos' });
+    }
+
+    const teachers = await query(
+      'SELECT id FROM teachers WHERE LOWER(username) = LOWER(?) AND password = ?',
+      [username, password]
+    );
+    if (teachers.length > 0) {
+      const teacherId = Number(teachers[0].id);
+      await ensureSalonsForTeacher(teacherId);
+      return res.json({ role: 'teacher', teacherId });
+    }
+
+    const students = await query(
+      `SELECT id, display_name FROM students
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?)) AND password = ?`,
+      [username, password]
+    );
+    if (students.length === 0) {
+      return res.status(401).json({ error: 'Nombre o contraseña incorrectos' });
+    }
+    const student = students[0];
+    const salons = await query(
+      `SELECT e.salon_id, sal.salon_number FROM enrollments e
+       INNER JOIN salons sal ON sal.id = e.salon_id
+       WHERE e.student_id = ? ORDER BY e.id DESC LIMIT 1`,
+      [student.id]
+    );
+    if (salons.length === 0) {
+      return res.status(404).json({
+        error: 'No estás en ningún salón. Regístrate con el código que te dio tu maestra.',
+      });
+    }
+    res.json({
+      role: 'student',
+      studentId: Number(student.id),
+      displayName: student.display_name,
+      salonId: Number(salons[0].salon_id),
+      salonNumber: salons[0].salon_number,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+/** Registro de alumno: nombre, contraseña y código del salón. */
+app.post('/api/students/register', async (req, res) => {
+  try {
+    const displayName = String(req.body.displayName || '').trim();
+    const password = String(req.body.password || '');
+    const inviteCode = String(req.body.inviteCode || '').trim().toUpperCase();
+    if (!displayName || !password) {
+      return res.status(400).json({ error: 'Nombre y contraseña requeridos' });
+    }
+    if (!inviteCode) {
+      return res.status(400).json({ error: 'Código del salón requerido' });
+    }
+
+    const salonRows = await query('SELECT * FROM salons WHERE invite_code = ?', [inviteCode]);
+    if (salonRows.length === 0) {
+      return res.status(404).json({ error: 'Código del salón no válido' });
+    }
+    const salon = salonRows[0];
+
+    const dup = await query(
+      'SELECT id FROM students WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))',
+      [displayName]
+    );
+    if (dup.length > 0) {
+      return res.status(409).json({ error: 'Ese nombre ya existe. Inicia sesión o elige otro.' });
+    }
+
+    const created = await execute(
+      'INSERT INTO students (display_name, password) VALUES (?, ?)',
+      [displayName, password]
+    );
+    const studentId = Number(created.insertId);
+    await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
+      studentId,
+      salon.id,
+    ]);
+
+    res.json({
+      studentId,
+      salonId: Number(salon.id),
+      displayName,
+      salonNumber: salon.salon_number,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -382,6 +485,8 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
     const studentId = Number(req.body.studentId);
     const textAnswer = req.body.textAnswer || null;
     const filePath = req.body.filePath || null;
+    const linkUrl = req.body.linkUrl || null;
+    const attachmentsJson = req.body.attachmentsJson || null;
     const now = Date.now();
     const existing = await query(
       'SELECT id FROM submissions WHERE post_id = ? AND student_id = ?',
@@ -389,15 +494,16 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
     );
     if (existing.length > 0) {
       await execute(
-        'UPDATE submissions SET text_answer = ?, file_path = ?, submitted_at = ? WHERE id = ?',
-        [textAnswer, filePath, now, existing[0].id]
+        `UPDATE submissions SET text_answer = ?, file_path = ?, link_url = ?,
+         attachments_json = ?, submitted_at = ? WHERE id = ?`,
+        [textAnswer, filePath, linkUrl, attachmentsJson, now, existing[0].id]
       );
       res.json({ id: Number(existing[0].id) });
     } else {
       const result = await execute(
-        `INSERT INTO submissions (post_id, student_id, text_answer, file_path, submitted_at)
-         VALUES (?, ?, ?, ?, ?)`,
-        [postId, studentId, textAnswer, filePath, now]
+        `INSERT INTO submissions (post_id, student_id, text_answer, file_path, link_url, attachments_json, submitted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [postId, studentId, textAnswer, filePath, linkUrl, attachmentsJson, now]
       );
       res.json({ id: Number(result.insertId) });
     }
@@ -412,7 +518,8 @@ app.get('/api/salons/:salonId/submissions', async (req, res) => {
     const rows = await query(
       `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
               sub.student_id, st.display_name AS student_name,
-              sub.text_answer, sub.file_path, sub.submitted_at, g.score, g.feedback
+              sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
+              sub.submitted_at, g.score, g.feedback
        FROM submissions sub
        INNER JOIN posts p ON p.id = sub.post_id
        INNER JOIN students st ON st.id = sub.student_id
@@ -433,7 +540,8 @@ app.get('/api/salons/:salonId/students/:studentId/submissions', async (req, res)
     const rows = await query(
       `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
               sub.student_id, st.display_name AS student_name,
-              sub.text_answer, sub.file_path, sub.submitted_at, g.score, g.feedback
+              sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
+              sub.submitted_at, g.score, g.feedback
        FROM submissions sub
        INNER JOIN posts p ON p.id = sub.post_id
        INNER JOIN students st ON st.id = sub.student_id

@@ -3,9 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="@dimen/space_lg">
 
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Aula.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/grade">
@@ -18,9 +19,10 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Aula.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/space_sm"
         android:hint="@string/feedback">
 
         <com.google.android.material.textfield.TextInputEditText

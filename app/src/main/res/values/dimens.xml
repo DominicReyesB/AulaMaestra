@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">16dp</dimen>
+    <dimen name="space_lg">24dp</dimen>
+    <dimen name="space_xl">32dp</dimen>
+    <dimen name="card_radius">20dp</dimen>
+    <dimen name="card_radius_sm">14dp</dimen>
+    <dimen name="card_elevation">6dp</dimen>
+    <dimen name="button_height">52dp</dimen>
+    <dimen name="salon_badge_size">56dp</dimen>
+    <dimen name="chat_bubble_radius">18dp</dimen>
+    <dimen name="screen_padding">20dp</dimen>
+</resources>

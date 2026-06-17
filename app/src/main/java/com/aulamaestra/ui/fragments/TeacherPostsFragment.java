@@ -114,7 +114,7 @@ public class TeacherPostsFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Post p = data.get(position);
-            h.type.setText(PostType.label(p.type));
+            PostType.applyChipStyle(h.type, p.type);
             h.title.setText(p.title);
             h.body.setText(p.body == null ? "" : p.body);
             if (p.filePath != null && !p.filePath.isEmpty()) {

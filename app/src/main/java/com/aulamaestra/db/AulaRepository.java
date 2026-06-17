@@ -5,7 +5,9 @@ import android.os.Looper;
 
 import com.aulamaestra.api.ApiClient;
 import com.aulamaestra.api.AulaApiService;
+import com.aulamaestra.api.dto.AuthLoginResponse;
 import com.aulamaestra.api.dto.AuthRequest;
+import com.aulamaestra.api.dto.StudentRegisterRequest;
 import com.aulamaestra.api.dto.EnrollRequest;
 import com.aulamaestra.api.dto.GradeRequest;
 import com.aulamaestra.api.dto.IdResponse;
@@ -161,7 +163,8 @@ public class AulaRepository {
     private static SubmissionRow mapSubmission(SubmissionDto d) {
         return new SubmissionRow(
                 d.submissionId, d.postId, d.assignmentTitle, d.studentId, d.studentName,
-                d.textAnswer, d.filePath, d.submittedAt, d.score, d.feedback);
+                d.textAnswer, d.filePath, d.linkUrl, d.attachmentsJson, d.submittedAt,
+                d.score, d.feedback);
     }
 
     private static ChatMessage mapMessage(MessageDto d) {
@@ -174,6 +177,15 @@ public class AulaRepository {
 
     public void loginTeacher(String username, String password, RepoCallback<Long> cb) {
         enqueueId(api.loginTeacher(new AuthRequest(username, password)), cb);
+    }
+
+    public void login(String username, String password, RepoCallback<AuthLoginResponse> cb) {
+        enqueue(api.login(new AuthRequest(username, password)), cb);
+    }
+
+    public void registerStudent(String displayName, String password, String inviteCode,
+                                RepoCallback<StudentJoinResponse> cb) {
+        enqueue(api.registerStudent(new StudentRegisterRequest(displayName, password, inviteCode)), cb);
     }
 
     public void listSalonsForTeacher(long teacherId, RepoCallback<List<Salon>> cb) {
@@ -293,8 +305,9 @@ public class AulaRepository {
     }
 
     public void upsertSubmission(long postId, long studentId, String text, String filePath,
-                                 RepoCallback<Void> cb) {
-        runId(api.submit(postId, new SubmissionCreateRequest(studentId, text, filePath)), cb);
+                                 String linkUrl, String attachmentsJson, RepoCallback<Void> cb) {
+        runId(api.submit(postId, new SubmissionCreateRequest(
+                studentId, text, filePath, linkUrl, attachmentsJson)), cb);
     }
 
     public void listSubmissionsForSalon(long salonId, RepoCallback<List<SubmissionRow>> cb) {

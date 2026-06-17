@@ -1,5 +1,7 @@
 package com.aulamaestra.ui.fragments;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -18,12 +20,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
 import com.aulamaestra.db.RepoCallback;
+import com.aulamaestra.model.SubmissionAttachment;
 import com.aulamaestra.model.SubmissionRow;
 import com.aulamaestra.ui.SalonViewModel;
+import com.aulamaestra.util.SubmissionAttachments;
+import com.aulamaestra.util.SubmissionDisplay;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -91,6 +95,46 @@ public class TeacherGradesFragment extends Fragment {
     }
 
     private void showGradeDialog(SubmissionRow row) {
+        String content = SubmissionDisplay.format(row);
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(row.studentName + " · " + row.assignmentTitle)
+                .setMessage(content)
+                .setPositiveButton(R.string.review_open_link, (d, w) -> openFirstLink(row))
+                .setNeutralButton(R.string.grade, (d, w) -> showScoreDialog(row))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void openFirstLink(SubmissionRow row) {
+        String url = row.linkUrl;
+        if (url == null || url.isEmpty()) {
+            for (SubmissionAttachment a : SubmissionAttachments.fromJson(row.attachmentsJson)) {
+                if ("link".equals(a.kind) && a.url != null && !a.url.isEmpty()) {
+                    url = a.url;
+                    break;
+                }
+                if (a.url != null && !a.url.isEmpty()) {
+                    url = a.url;
+                    break;
+                }
+            }
+        }
+        if (url == null || url.isEmpty()) {
+            if (row.filePath != null && !row.filePath.isEmpty()) {
+                url = row.filePath;
+            }
+        }
+        if (url == null || url.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.review_no_link, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!url.startsWith("http")) {
+            url = "https://" + url;
+        }
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+    }
+
+    private void showScoreDialog(SubmissionRow row) {
         View form = getLayoutInflater().inflate(R.layout.dialog_grade, null);
         TextInputEditText score = form.findViewById(R.id.inputScore);
         TextInputEditText feedback = form.findViewById(R.id.inputFeedback);
@@ -170,17 +214,7 @@ public class TeacherGradesFragment extends Fragment {
             SubmissionRow r = data.get(position);
             h.title.setText(r.assignmentTitle);
             h.student.setText(r.studentName);
-            StringBuilder ans = new StringBuilder();
-            if (r.textAnswer != null && !r.textAnswer.isEmpty()) {
-                ans.append(r.textAnswer);
-            }
-            if (r.filePath != null && !r.filePath.isEmpty()) {
-                if (ans.length() > 0) {
-                    ans.append("\n");
-                }
-                ans.append("Archivo: ").append(new File(r.filePath).getName());
-            }
-            h.answer.setText(ans.length() == 0 ? "(sin contenido)" : ans.toString());
+            h.answer.setText(SubmissionDisplay.format(r));
             if (r.score != null) {
                 h.grade.setVisibility(View.VISIBLE);
                 String fb = r.feedback == null ? "" : " · " + r.feedback;

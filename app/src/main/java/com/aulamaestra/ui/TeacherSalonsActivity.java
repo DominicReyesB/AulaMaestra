@@ -108,6 +108,7 @@ public class TeacherSalonsActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Salon s = data.get(position);
+            h.number.setText(String.valueOf(s.number));
             h.title.setText("Salón " + s.number);
             h.code.setText(h.itemView.getContext().getString(R.string.invite_code_label, s.inviteCode));
             h.itemView.setOnClickListener(v -> listener.onOpen(s));
@@ -119,11 +120,13 @@ public class TeacherSalonsActivity extends AppCompatActivity {
         }
 
         static class VH extends RecyclerView.ViewHolder {
+            final TextView number;
             final TextView title;
             final TextView code;
 
             VH(@NonNull View itemView) {
                 super(itemView);
+                number = itemView.findViewById(R.id.textSalonNumber);
                 title = itemView.findViewById(R.id.textSalonTitle);
                 code = itemView.findViewById(R.id.textSalonCode);
             }

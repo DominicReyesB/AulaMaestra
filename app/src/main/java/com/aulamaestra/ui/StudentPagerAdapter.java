@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
+import com.aulamaestra.ui.fragments.StudentAssignmentsFragment;
 import com.aulamaestra.ui.fragments.StudentFeedFragment;
 import com.aulamaestra.ui.fragments.StudentMessagesFragment;
 import com.aulamaestra.ui.fragments.StudentWorkFragment;
@@ -26,6 +27,9 @@ public class StudentPagerAdapter extends FragmentStateAdapter {
             return StudentFeedFragment.newInstance(salonId, studentId);
         }
         if (position == 1) {
+            return StudentAssignmentsFragment.newInstance(salonId, studentId);
+        }
+        if (position == 2) {
             return StudentWorkFragment.newInstance(salonId, studentId);
         }
         return StudentMessagesFragment.newInstance(salonId, studentId);
@@ -33,6 +37,6 @@ public class StudentPagerAdapter extends FragmentStateAdapter {
 
     @Override
     public int getItemCount() {
-        return 3;
+        return 4;
     }
 }

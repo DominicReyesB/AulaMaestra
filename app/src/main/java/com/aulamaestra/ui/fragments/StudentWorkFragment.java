@@ -21,7 +21,8 @@ import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.SubmissionRow;
 import com.aulamaestra.ui.SalonViewModel;
 
-import java.io.File;
+import com.aulamaestra.util.SubmissionDisplay;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -117,17 +118,7 @@ public class StudentWorkFragment extends Fragment {
             SubmissionRow r = data.get(position);
             h.title.setText(r.assignmentTitle);
             h.student.setVisibility(View.GONE);
-            StringBuilder ans = new StringBuilder();
-            if (r.textAnswer != null && !r.textAnswer.isEmpty()) {
-                ans.append(r.textAnswer);
-            }
-            if (r.filePath != null && !r.filePath.isEmpty()) {
-                if (ans.length() > 0) {
-                    ans.append("\n");
-                }
-                ans.append("Archivo: ").append(new File(r.filePath).getName());
-            }
-            h.answer.setText(ans.length() == 0 ? "(sin contenido)" : ans.toString());
+            h.answer.setText(SubmissionDisplay.format(r));
             h.grade.setVisibility(View.VISIBLE);
             if (r.score != null) {
                 String fb = r.feedback == null ? "" : "\n" + r.feedback;

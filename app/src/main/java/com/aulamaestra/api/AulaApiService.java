@@ -1,6 +1,8 @@
 package com.aulamaestra.api;
 
+import com.aulamaestra.api.dto.AuthLoginResponse;
 import com.aulamaestra.api.dto.AuthRequest;
+import com.aulamaestra.api.dto.StudentRegisterRequest;
 import com.aulamaestra.api.dto.EnrollRequest;
 import com.aulamaestra.api.dto.GradeRequest;
 import com.aulamaestra.api.dto.IdResponse;
@@ -37,6 +39,12 @@ public interface AulaApiService {
 
     @POST("api/teachers/login")
     Call<IdResponse> loginTeacher(@Body AuthRequest body);
+
+    @POST("api/auth/login")
+    Call<AuthLoginResponse> login(@Body AuthRequest body);
+
+    @POST("api/students/register")
+    Call<StudentJoinResponse> registerStudent(@Body StudentRegisterRequest body);
 
     @GET("api/teachers/{teacherId}/salons")
     Call<List<SalonDto>> listSalons(@Path("teacherId") long teacherId);

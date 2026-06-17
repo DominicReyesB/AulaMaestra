@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS salons (
 
 CREATE TABLE IF NOT EXISTS students (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    display_name VARCHAR(255) NOT NULL
+    display_name VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS enrollments (
@@ -44,6 +45,8 @@ CREATE TABLE IF NOT EXISTS submissions (
     student_id BIGINT NOT NULL,
     text_answer TEXT,
     file_path TEXT,
+    link_url TEXT,
+    attachments_json TEXT,
     submitted_at BIGINT NOT NULL,
     UNIQUE KEY uk_submission (post_id, student_id),
     CONSTRAINT fk_sub_post FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
