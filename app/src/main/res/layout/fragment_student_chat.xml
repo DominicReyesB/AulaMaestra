@@ -2,21 +2,39 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_screen"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="@dimen/space_xl">
+
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:contentDescription="@string/chat_teacher"
+        android:src="@drawable/ic_launcher_legacy" />
 
     <TextView
+        style="@style/Text.Aula.Title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_lg"
         android:gravity="center"
-        android:text="Comunícate con tu maestra. Ella también puede iniciar conversación contigo."
-        android:textAppearance="?attr/textAppearanceBodyLarge" />
+        android:text="@string/chat_teacher" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_sm"
+        android:gravity="center"
+        android:text="@string/student_chat_intro"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/on_surface_variant" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnOpenMessages"
+        style="@style/Widget.Aula.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="@dimen/space_xl"
         android:text="@string/chat_teacher" />
 </LinearLayout>

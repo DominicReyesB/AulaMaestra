@@ -1,8 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_500">#6750A4</color>
-    <color name="purple_700">#4F378B</color>
-    <color name="teal_200">#03DAC5</color>
+    <!-- Paleta pastel: azul, rosa y amarillo (Humanities Class) -->
+    <color name="primary">#6BAED6</color>
+    <color name="primary_dark">#4A8FB8</color>
+    <color name="primary_light">#9ECAE8</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#DDF0FA</color>
+    <color name="on_primary_container">#2E5F7A</color>
+
+    <color name="secondary">#F4A4B8</color>
+    <color name="secondary_dark">#E889A2</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="secondary_container">#FFE8F0</color>
+    <color name="on_secondary_container">#7A3D52</color>
+
+    <color name="tertiary">#FFE08A</color>
+    <color name="tertiary_dark">#F5CC6A</color>
+    <color name="tertiary_container">#FFF6D6</color>
+    <color name="on_tertiary_container">#6B5520</color>
+
+    <color name="background">#FFFBF5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="surface_variant">#FFF5EC</color>
+    <color name="on_surface">#3D3A45</color>
+    <color name="on_surface_variant">#7A7380</color>
+    <color name="outline">#E8D8E0</color>
+    <color name="outline_variant">#F3E8EE</color>
+
+    <color name="success">#8FD4A8</color>
+    <color name="success_container">#E8F8EE</color>
+    <color name="error">#E89898</color>
+    <color name="error_container">#FFE8E8</color>
+
+    <color name="chip_announcement_bg">#DDF0FA</color>
+    <color name="chip_announcement_text">#4A8FB8</color>
+    <color name="chip_assignment_bg">#FFF6D6</color>
+    <color name="chip_assignment_text">#8A6B30</color>
+    <color name="chip_file_bg">#FFE8F0</color>
+    <color name="chip_file_text">#C46B88</color>
+
+    <color name="chat_sent">#6BAED6</color>
+    <color name="chat_sent_text">#FFFFFF</color>
+    <color name="chat_received">#FFE8F0</color>
+    <color name="chat_received_text">#3D3A45</color>
+
+    <color name="gradient_start">#9ECAE8</color>
+    <color name="gradient_mid">#F4A4B8</color>
+    <color name="gradient_end">#FFE08A</color>
+    <color name="gradient_glow">#33FFE08A</color>
+
+    <color name="salon_badge_bg">#6BAED6</color>
+    <color name="salon_badge_text">#FFFFFF</color>
+    <color name="salon_card_stripe">#F4A4B8</color>
+
+    <color name="launcher_background">#FFF3B0</color>
+
+    <!-- Compat legacy -->
+    <color name="purple_500">@color/primary</color>
+    <color name="purple_700">@color/primary_dark</color>
+    <color name="teal_200">@color/tertiary</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
