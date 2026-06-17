@@ -1,5 +1,6 @@
 package com.aulamaestra.ui.fragments;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
