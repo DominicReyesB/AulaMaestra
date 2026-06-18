@@ -144,6 +144,47 @@ app.post('/api/teachers/login', async (req, res) => {
   }
 });
 
+async function authenticateStudent(username, password) {
+  try {
+    const rows = await query(
+      `SELECT id, display_name, password FROM students
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))`,
+      [username]
+    );
+    if (rows.length === 0) {
+      return null;
+    }
+    const student = rows[0];
+    if (student.password == null || student.password === '') {
+      return { error: 'Tu cuenta no tiene contraseña. Regístrate de nuevo con el código del salón.' };
+    }
+    if (student.password !== password) {
+      return null;
+    }
+    return student;
+  } catch (e) {
+    if (e.code !== 'ER_BAD_FIELD_ERROR') {
+      throw e;
+    }
+    const rows = await query(
+      `SELECT id, display_name FROM students
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))`,
+      [username]
+    );
+    return rows.length > 0 ? rows[0] : null;
+  }
+}
+
+async function lastSalonForStudent(studentId) {
+  const salons = await query(
+    `SELECT e.salon_id, sal.salon_number FROM enrollments e
+     INNER JOIN salons sal ON sal.id = e.salon_id
+     WHERE e.student_id = ? ORDER BY e.id DESC LIMIT 1`,
+    [studentId]
+  );
+  return salons.length > 0 ? salons[0] : null;
+}
+
 /** Login unificado: nombre + contraseña (maestra o alumno). */
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -163,22 +204,15 @@ app.post('/api/auth/login', async (req, res) => {
       return res.json({ role: 'teacher', teacherId });
     }
 
-    const students = await query(
-      `SELECT id, display_name FROM students
-       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?)) AND password = ?`,
-      [username, password]
-    );
-    if (students.length === 0) {
+    const student = await authenticateStudent(username, password);
+    if (student && student.error) {
+      return res.status(401).json({ error: student.error });
+    }
+    if (!student) {
       return res.status(401).json({ error: 'Nombre o contraseña incorrectos' });
     }
-    const student = students[0];
-    const salons = await query(
-      `SELECT e.salon_id, sal.salon_number FROM enrollments e
-       INNER JOIN salons sal ON sal.id = e.salon_id
-       WHERE e.student_id = ? ORDER BY e.id DESC LIMIT 1`,
-      [student.id]
-    );
-    if (salons.length === 0) {
+    const salon = await lastSalonForStudent(student.id);
+    if (!salon) {
       return res.status(404).json({
         error: 'No estás en ningún salón. Regístrate con el código que te dio tu maestra.',
       });
@@ -187,8 +221,8 @@ app.post('/api/auth/login', async (req, res) => {
       role: 'student',
       studentId: Number(student.id),
       displayName: student.display_name,
-      salonId: Number(salons[0].salon_id),
-      salonNumber: salons[0].salon_number,
+      salonId: Number(salon.salon_id),
+      salonNumber: salon.salon_number,
     });
   } catch (e) {
     console.error(e);
@@ -226,7 +260,12 @@ app.post('/api/students/register', async (req, res) => {
     const created = await execute(
       'INSERT INTO students (display_name, password) VALUES (?, ?)',
       [displayName, password]
-    );
+    ).catch(async (e) => {
+      if (e.code !== 'ER_BAD_FIELD_ERROR') {
+        throw e;
+      }
+      return execute('INSERT INTO students (display_name) VALUES (?)', [displayName]);
+    });
     const studentId = Number(created.insertId);
     await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
       studentId,
@@ -492,20 +531,40 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
       'SELECT id FROM submissions WHERE post_id = ? AND student_id = ?',
       [postId, studentId]
     );
-    if (existing.length > 0) {
-      await execute(
-        `UPDATE submissions SET text_answer = ?, file_path = ?, link_url = ?,
-         attachments_json = ?, submitted_at = ? WHERE id = ?`,
-        [textAnswer, filePath, linkUrl, attachmentsJson, now, existing[0].id]
-      );
-      res.json({ id: Number(existing[0].id) });
-    } else {
-      const result = await execute(
-        `INSERT INTO submissions (post_id, student_id, text_answer, file_path, link_url, attachments_json, submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [postId, studentId, textAnswer, filePath, linkUrl, attachmentsJson, now]
-      );
-      res.json({ id: Number(result.insertId) });
+    try {
+      if (existing.length > 0) {
+        await execute(
+          `UPDATE submissions SET text_answer = ?, file_path = ?, link_url = ?,
+           attachments_json = ?, submitted_at = ? WHERE id = ?`,
+          [textAnswer, filePath, linkUrl, attachmentsJson, now, existing[0].id]
+        );
+        res.json({ id: Number(existing[0].id) });
+      } else {
+        const result = await execute(
+          `INSERT INTO submissions (post_id, student_id, text_answer, file_path, link_url, attachments_json, submitted_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [postId, studentId, textAnswer, filePath, linkUrl, attachmentsJson, now]
+        );
+        res.json({ id: Number(result.insertId) });
+      }
+    } catch (colErr) {
+      if (colErr.code !== 'ER_BAD_FIELD_ERROR') {
+        throw colErr;
+      }
+      if (existing.length > 0) {
+        await execute(
+          'UPDATE submissions SET text_answer = ?, file_path = ?, submitted_at = ? WHERE id = ?',
+          [textAnswer, filePath, now, existing[0].id]
+        );
+        res.json({ id: Number(existing[0].id) });
+      } else {
+        const result = await execute(
+          `INSERT INTO submissions (post_id, student_id, text_answer, file_path, submitted_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [postId, studentId, textAnswer, filePath, now]
+        );
+        res.json({ id: Number(result.insertId) });
+      }
     }
   } catch (e) {
     console.error(e);
@@ -515,19 +574,39 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
 
 app.get('/api/salons/:salonId/submissions', async (req, res) => {
   try {
-    const rows = await query(
-      `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
-              sub.student_id, st.display_name AS student_name,
-              sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
-              sub.submitted_at, g.score, g.feedback
-       FROM submissions sub
-       INNER JOIN posts p ON p.id = sub.post_id
-       INNER JOIN students st ON st.id = sub.student_id
-       LEFT JOIN grades g ON g.submission_id = sub.id
-       WHERE p.salon_id = ? AND p.post_type = 1
-       ORDER BY sub.submitted_at DESC`,
-      [req.params.salonId]
-    );
+    let rows;
+    try {
+      rows = await query(
+        `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
+                sub.student_id, st.display_name AS student_name,
+                sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
+                sub.submitted_at, g.score, g.feedback
+         FROM submissions sub
+         INNER JOIN posts p ON p.id = sub.post_id
+         INNER JOIN students st ON st.id = sub.student_id
+         LEFT JOIN grades g ON g.submission_id = sub.id
+         WHERE p.salon_id = ? AND p.post_type = 1
+         ORDER BY sub.submitted_at DESC`,
+        [req.params.salonId]
+      );
+    } catch (colErr) {
+      if (colErr.code !== 'ER_BAD_FIELD_ERROR') {
+        throw colErr;
+      }
+      rows = await query(
+        `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
+                sub.student_id, st.display_name AS student_name,
+                sub.text_answer, sub.file_path, NULL AS link_url, NULL AS attachments_json,
+                sub.submitted_at, g.score, g.feedback
+         FROM submissions sub
+         INNER JOIN posts p ON p.id = sub.post_id
+         INNER JOIN students st ON st.id = sub.student_id
+         LEFT JOIN grades g ON g.submission_id = sub.id
+         WHERE p.salon_id = ? AND p.post_type = 1
+         ORDER BY sub.submitted_at DESC`,
+        [req.params.salonId]
+      );
+    }
     res.json(rows.map(submissionRow));
   } catch (e) {
     console.error(e);
@@ -537,19 +616,39 @@ app.get('/api/salons/:salonId/submissions', async (req, res) => {
 
 app.get('/api/salons/:salonId/students/:studentId/submissions', async (req, res) => {
   try {
-    const rows = await query(
-      `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
-              sub.student_id, st.display_name AS student_name,
-              sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
-              sub.submitted_at, g.score, g.feedback
-       FROM submissions sub
-       INNER JOIN posts p ON p.id = sub.post_id
-       INNER JOIN students st ON st.id = sub.student_id
-       LEFT JOIN grades g ON g.submission_id = sub.id
-       WHERE p.salon_id = ? AND sub.student_id = ?
-       ORDER BY sub.submitted_at DESC`,
-      [req.params.salonId, req.params.studentId]
-    );
+    let rows;
+    try {
+      rows = await query(
+        `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
+                sub.student_id, st.display_name AS student_name,
+                sub.text_answer, sub.file_path, sub.link_url, sub.attachments_json,
+                sub.submitted_at, g.score, g.feedback
+         FROM submissions sub
+         INNER JOIN posts p ON p.id = sub.post_id
+         INNER JOIN students st ON st.id = sub.student_id
+         LEFT JOIN grades g ON g.submission_id = sub.id
+         WHERE p.salon_id = ? AND sub.student_id = ?
+         ORDER BY sub.submitted_at DESC`,
+        [req.params.salonId, req.params.studentId]
+      );
+    } catch (colErr) {
+      if (colErr.code !== 'ER_BAD_FIELD_ERROR') {
+        throw colErr;
+      }
+      rows = await query(
+        `SELECT sub.id AS submission_id, sub.post_id, p.title AS assignment_title,
+                sub.student_id, st.display_name AS student_name,
+                sub.text_answer, sub.file_path, NULL AS link_url, NULL AS attachments_json,
+                sub.submitted_at, g.score, g.feedback
+         FROM submissions sub
+         INNER JOIN posts p ON p.id = sub.post_id
+         INNER JOIN students st ON st.id = sub.student_id
+         LEFT JOIN grades g ON g.submission_id = sub.id
+         WHERE p.salon_id = ? AND sub.student_id = ?
+         ORDER BY sub.submitted_at DESC`,
+        [req.params.salonId, req.params.studentId]
+      );
+    }
     res.json(rows.map(submissionRow));
   } catch (e) {
     console.error(e);

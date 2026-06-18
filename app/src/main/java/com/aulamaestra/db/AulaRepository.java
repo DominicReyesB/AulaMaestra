@@ -180,12 +180,99 @@ public class AulaRepository {
     }
 
     public void login(String username, String password, RepoCallback<AuthLoginResponse> cb) {
-        enqueue(api.login(new AuthRequest(username, password)), cb);
+        api.login(new AuthRequest(username, password)).enqueue(new Callback<AuthLoginResponse>() {
+            @Override
+            public void onResponse(Call<AuthLoginResponse> call, Response<AuthLoginResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    main.post(() -> cb.onSuccess(response.body()));
+                    return;
+                }
+                if (response.code() == 404 || response.code() == 405) {
+                    loginLegacy(username, password, cb);
+                    return;
+                }
+                main.post(() -> cb.onError(errorMessage(response)));
+            }
+
+            @Override
+            public void onFailure(Call<AuthLoginResponse> call, Throwable t) {
+                loginLegacy(username, password, cb);
+            }
+        });
+    }
+
+    private void loginLegacy(String username, String password, RepoCallback<AuthLoginResponse> cb) {
+        loginTeacher(username.toLowerCase(), password, new RepoCallback<Long>() {
+            @Override
+            public void onSuccess(Long teacherId) {
+                AuthLoginResponse r = new AuthLoginResponse();
+                r.role = "teacher";
+                r.teacherId = teacherId;
+                main.post(() -> cb.onSuccess(r));
+            }
+
+            @Override
+            public void onError(String teacherErr) {
+                main.post(() -> cb.onError(
+                        "Nombre o contraseña incorrectos. Si eres alumno nuevo, regístrate primero."));
+            }
+        });
     }
 
     public void registerStudent(String displayName, String password, String inviteCode,
                                 RepoCallback<StudentJoinResponse> cb) {
-        enqueue(api.registerStudent(new StudentRegisterRequest(displayName, password, inviteCode)), cb);
+        api.registerStudent(new StudentRegisterRequest(displayName, password, inviteCode))
+                .enqueue(new Callback<StudentJoinResponse>() {
+                    @Override
+                    public void onResponse(Call<StudentJoinResponse> call, Response<StudentJoinResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            main.post(() -> cb.onSuccess(response.body()));
+                            return;
+                        }
+                        if (response.code() == 404 || response.code() == 405) {
+                            joinSalon(inviteCode, displayName, null, "register",
+                                    new RepoCallback<StudentJoinResult>() {
+                                        @Override
+                                        public void onSuccess(StudentJoinResult result) {
+                                            StudentJoinResponse r = new StudentJoinResponse();
+                                            r.studentId = result.studentId;
+                                            r.salonId = result.salonId;
+                                            r.displayName = result.displayName;
+                                            r.salonNumber = result.salonNumber;
+                                            cb.onSuccess(r);
+                                        }
+
+                                        @Override
+                                        public void onError(String message) {
+                                            cb.onError(message);
+                                        }
+                                    });
+                            return;
+                        }
+                        main.post(() -> cb.onError(errorMessage(response)));
+                    }
+
+                    @Override
+                    public void onFailure(Call<StudentJoinResponse> call, Throwable t) {
+                        joinSalon(inviteCode, displayName, null, "register",
+                                new RepoCallback<StudentJoinResult>() {
+                                    @Override
+                                    public void onSuccess(StudentJoinResult result) {
+                                        StudentJoinResponse r = new StudentJoinResponse();
+                                        r.studentId = result.studentId;
+                                        r.salonId = result.salonId;
+                                        r.displayName = result.displayName;
+                                        r.salonNumber = result.salonNumber;
+                                        cb.onSuccess(r);
+                                    }
+
+                                    @Override
+                                    public void onError(String message) {
+                                        cb.onError(message != null ? message : "Sin conexión al servidor");
+                                    }
+                                });
+                    }
+                });
     }
 
     public void listSalonsForTeacher(long teacherId, RepoCallback<List<Salon>> cb) {
