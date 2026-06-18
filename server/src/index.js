@@ -148,7 +148,8 @@ async function authenticateStudent(username, password) {
   try {
     const rows = await query(
       `SELECT id, display_name, password FROM students
-       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))`,
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))
+       ORDER BY id DESC`,
       [username]
     );
     if (rows.length === 0) {
@@ -156,7 +157,7 @@ async function authenticateStudent(username, password) {
     }
     const student = rows[0];
     if (student.password == null || student.password === '') {
-      return { error: 'Tu cuenta no tiene contraseña. Regístrate de nuevo con el código del salón.' };
+      return { error: 'Tu cuenta no tiene contraseña. Ve a Registrarse y usa el mismo nombre para actualizarla.' };
     }
     if (student.password !== password) {
       return null;
@@ -168,10 +169,14 @@ async function authenticateStudent(username, password) {
     }
     const rows = await query(
       `SELECT id, display_name FROM students
-       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))`,
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))
+       ORDER BY id DESC`,
       [username]
     );
-    return rows.length > 0 ? rows[0] : null;
+    if (rows.length === 0) {
+      return null;
+    }
+    return { error: 'El servidor aún no guarda contraseñas. Ve a Registrarse con tu código de salón.' };
   }
 }
 
@@ -183,6 +188,54 @@ async function lastSalonForStudent(studentId) {
     [studentId]
   );
   return salons.length > 0 ? salons[0] : null;
+}
+
+async function saveStudentPassword(studentId, password) {
+  if (!password) {
+    return;
+  }
+  try {
+    await execute('UPDATE students SET password = ? WHERE id = ?', [password, studentId]);
+  } catch (e) {
+    if (e.code !== 'ER_BAD_FIELD_ERROR') {
+      throw e;
+    }
+  }
+}
+
+async function createStudentWithPassword(displayName, password) {
+  try {
+    const created = await execute('INSERT INTO students (display_name, password) VALUES (?, ?)', [
+      displayName,
+      password,
+    ]);
+    return Number(created.insertId);
+  } catch (e) {
+    if (e.code !== 'ER_BAD_FIELD_ERROR') {
+      throw e;
+    }
+    const created = await execute('INSERT INTO students (display_name) VALUES (?)', [displayName]);
+    return Number(created.insertId);
+  }
+}
+
+async function buildStudentLoginResponse(student) {
+  const salon = await lastSalonForStudent(student.id);
+  if (!salon) {
+    return {
+      error: 'No encontramos tu salón. Ve a Registrarse y confirma tu nombre y contraseña con el código del salón.',
+      status: 404,
+    };
+  }
+  return {
+    body: {
+      role: 'student',
+      studentId: Number(student.id),
+      displayName: student.display_name,
+      salonId: Number(salon.salon_id),
+      salonNumber: salon.salon_number,
+    },
+  };
 }
 
 /** Login unificado: nombre + contraseña (maestra o alumno). */
@@ -211,19 +264,37 @@ app.post('/api/auth/login', async (req, res) => {
     if (!student) {
       return res.status(401).json({ error: 'Nombre o contraseña incorrectos' });
     }
-    const salon = await lastSalonForStudent(student.id);
-    if (!salon) {
-      return res.status(404).json({
-        error: 'No estás en ningún salón. Regístrate con el código que te dio tu maestra.',
-      });
+    const login = await buildStudentLoginResponse(student);
+    if (login.error) {
+      return res.status(login.status).json({ error: login.error });
     }
-    res.json({
-      role: 'student',
-      studentId: Number(student.id),
-      displayName: student.display_name,
-      salonId: Number(salon.salon_id),
-      salonNumber: salon.salon_number,
-    });
+    res.json(login.body);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+/** Login de alumno: solo nombre + contraseña (sin código de salón). */
+app.post('/api/students/login', async (req, res) => {
+  try {
+    const username = String(req.body.username || req.body.displayName || '').trim();
+    const password = String(req.body.password || '');
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Nombre y contraseña requeridos' });
+    }
+    const student = await authenticateStudent(username, password);
+    if (student && student.error) {
+      return res.status(401).json({ error: student.error });
+    }
+    if (!student) {
+      return res.status(401).json({ error: 'Nombre o contraseña incorrectos' });
+    }
+    const login = await buildStudentLoginResponse(student);
+    if (login.error) {
+      return res.status(login.status).json({ error: login.error });
+    }
+    res.json(login.body);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -250,23 +321,25 @@ app.post('/api/students/register', async (req, res) => {
     const salon = salonRows[0];
 
     const dup = await query(
-      'SELECT id FROM students WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?))',
+      'SELECT id FROM students WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?)) ORDER BY id DESC',
       [displayName]
     );
     if (dup.length > 0) {
-      return res.status(409).json({ error: 'Ese nombre ya existe. Inicia sesión o elige otro.' });
+      const studentId = Number(dup[0].id);
+      await saveStudentPassword(studentId, password);
+      await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
+        studentId,
+        salon.id,
+      ]);
+      return res.json({
+        studentId,
+        salonId: Number(salon.id),
+        displayName,
+        salonNumber: salon.salon_number,
+      });
     }
 
-    const created = await execute(
-      'INSERT INTO students (display_name, password) VALUES (?, ?)',
-      [displayName, password]
-    ).catch(async (e) => {
-      if (e.code !== 'ER_BAD_FIELD_ERROR') {
-        throw e;
-      }
-      return execute('INSERT INTO students (display_name) VALUES (?)', [displayName]);
-    });
-    const studentId = Number(created.insertId);
+    const studentId = await createStudentWithPassword(displayName, password);
     await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
       studentId,
       salon.id,
@@ -361,6 +434,7 @@ app.post('/api/students/join-salon', async (req, res) => {
   try {
     const inviteCode = String(req.body.inviteCode || '').trim().toUpperCase();
     const displayName = String(req.body.displayName || '').trim();
+    const password = String(req.body.password || '');
     const studentId = req.body.studentId != null ? Number(req.body.studentId) : null;
     const mode = String(req.body.mode || 'register').toLowerCase();
 
@@ -401,12 +475,11 @@ app.post('/api/students/join-salon', async (req, res) => {
         finalStudentId = Number(existing.id);
         finalName = existing.display_name;
       } else if (existing) {
-        // Registro idempotente: ya existe → entrar sin crear duplicado
         finalStudentId = Number(existing.id);
         finalName = existing.display_name;
+        await saveStudentPassword(finalStudentId, password);
       } else {
-        const created = await execute('INSERT INTO students (display_name) VALUES (?)', [finalName]);
-        finalStudentId = Number(created.insertId);
+        finalStudentId = await createStudentWithPassword(finalName, password);
       }
     }
 

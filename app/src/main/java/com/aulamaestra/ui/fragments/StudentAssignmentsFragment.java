@@ -89,24 +89,24 @@ public class StudentAssignmentsFragment extends Fragment {
         adapter = new AssignmentsAdapter(new ArrayList<>(), this::showSubmitDialog);
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
-        vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
-    }
-
-    private void load() {
-        repo.listPosts(salonId, PostType.ASSIGNMENT, new RepoCallback<List<Post>>() {
-            @Override
-            public void onSuccess(List<Post> posts) {
-                adapter.replace(posts);
-                empty.setVisibility(posts.isEmpty() ? View.VISIBLE : View.GONE);
-                empty.setText(R.string.no_assignments);
-            }
-
-            @Override
-            public void onError(String message) {
+        vm.posts.observe(getViewLifecycleOwner(), posts -> applyPosts(posts == null ? new ArrayList<>() : posts));
+        vm.postsError.observe(getViewLifecycleOwner(), message -> {
+            if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void applyPosts(List<Post> posts) {
+        List<Post> assignments = new ArrayList<>();
+        for (Post p : posts) {
+            if (p.type == PostType.ASSIGNMENT) {
+                assignments.add(p);
+            }
+        }
+        adapter.replace(assignments);
+        empty.setVisibility(assignments.isEmpty() ? View.VISIBLE : View.GONE);
+        empty.setText(R.string.no_assignments);
     }
 
     private void onPicked(Uri uri) {
@@ -227,7 +227,8 @@ public class StudentAssignmentsFragment extends Fragment {
         repo.upsertSubmission(post.id, studentId, text, firstFile, link, json, new RepoCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
-                new ViewModelProvider(requireActivity()).get(SalonViewModel.class).bump();
+                SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
+                vm.bump(repo);
                 Toast.makeText(requireContext(), R.string.submit_ok, Toast.LENGTH_SHORT).show();
                 d.dismiss();
             }

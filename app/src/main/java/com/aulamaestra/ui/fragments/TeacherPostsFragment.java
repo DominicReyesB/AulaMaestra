@@ -17,7 +17,6 @@ import com.aulamaestra.R;
 import android.widget.Toast;
 
 import com.aulamaestra.db.AulaRepository;
-import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.Post;
 import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
@@ -70,22 +69,22 @@ public class TeacherPostsFragment extends Fragment {
         adapter = new PostAdapter(new ArrayList<>());
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
-        vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
-    }
-
-    private void load() {
-        repo.listPosts(salonId, postType, new RepoCallback<List<Post>>() {
-            @Override
-            public void onSuccess(List<Post> posts) {
-                adapter.replace(posts);
-                boolean isEmpty = posts.isEmpty();
-                empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-                empty.setText("No hay publicaciones todavía.");
+        vm.posts.observe(getViewLifecycleOwner(), all -> {
+            List<Post> filtered = new ArrayList<>();
+            if (all != null) {
+                for (Post p : all) {
+                    if (p.type == postType) {
+                        filtered.add(p);
+                    }
+                }
             }
-
-            @Override
-            public void onError(String message) {
+            adapter.replace(filtered);
+            boolean isEmpty = filtered.isEmpty();
+            empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+            empty.setText("No hay publicaciones todavía.");
+        });
+        vm.postsError.observe(getViewLifecycleOwner(), message -> {
+            if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });

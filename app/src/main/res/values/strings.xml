@@ -24,6 +24,7 @@
     <string name="username">Nombre de usuario</string>
     <string name="password">Contraseña</string>
     <string name="login">Iniciar sesión</string>
+    <string name="login_loading">Entrando…</string>
     <string name="login_fill_fields">Completa nombre y contraseña</string>
     <string name="register_ok">Cuenta creada</string>
     <string name="student_code">Código del salón</string>

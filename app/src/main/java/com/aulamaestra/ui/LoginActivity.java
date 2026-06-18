@@ -16,22 +16,47 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 public class LoginActivity extends AppCompatActivity {
+    public static final String EXTRA_MANUAL_LOGIN = "manual_login";
+
     private final AulaRepository repo = AulaRepository.get();
     private SessionManager session;
     private TextInputEditText inputUser;
     private TextInputEditText inputPass;
+    private MaterialButton btnLogin;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
         session = new SessionManager(this);
+        if (!getIntent().getBooleanExtra(EXTRA_MANUAL_LOGIN, false) && restoreSavedSession()) {
+            return;
+        }
+        setContentView(R.layout.activity_login);
         inputUser = findViewById(R.id.inputUser);
         inputPass = findViewById(R.id.inputPass);
+        btnLogin = findViewById(R.id.btnLogin);
 
         findViewById(R.id.btnLogin).setOnClickListener(v -> doLogin());
         findViewById(R.id.btnGoRegister).setOnClickListener(v ->
                 startActivity(new Intent(this, RegisterActivity.class)));
+    }
+
+    private boolean restoreSavedSession() {
+        long teacherId = session.getTeacherId();
+        if (teacherId > 0) {
+            startActivity(new Intent(this, TeacherSalonsActivity.class));
+            finish();
+            return true;
+        }
+        if (session.hasStudentSession()) {
+            long studentId = session.getStudentId();
+            long salonId = session.getLastSalonId();
+            if (studentId > 0 && salonId > 0) {
+                openStudent(studentId, salonId, session.getStudentName());
+                return true;
+            }
+        }
+        return false;
     }
 
     private void doLogin() {
@@ -41,9 +66,11 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.login_fill_fields, Toast.LENGTH_SHORT).show();
             return;
         }
+        setLoading(true);
         repo.login(name, pass, new RepoCallback<AuthLoginResponse>() {
             @Override
             public void onSuccess(AuthLoginResponse r) {
+                setLoading(false);
                 if ("teacher".equals(r.role) && r.teacherId != null) {
                     session.clearStudent();
                     session.setTeacherId(r.teacherId);
@@ -54,11 +81,7 @@ public class LoginActivity extends AppCompatActivity {
                 if ("student".equals(r.role) && r.studentId != null && r.salonId != null) {
                     session.clearTeacher();
                     session.saveStudentSession(r.studentId, r.displayName, r.salonId);
-                    Intent i = new Intent(LoginActivity.this, StudentSalonActivity.class);
-                    i.putExtra(StudentSalonActivity.EXTRA_SALON_ID, r.salonId);
-                    i.putExtra(StudentSalonActivity.EXTRA_STUDENT_ID, r.studentId);
-                    startActivity(i);
-                    finish();
+                    openStudent(r.studentId, r.salonId, r.displayName);
                     return;
                 }
                 Toast.makeText(LoginActivity.this, R.string.login_error, Toast.LENGTH_SHORT).show();
@@ -66,9 +89,26 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
+                setLoading(false);
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void openStudent(long studentId, long salonId, String displayName) {
+        session.saveStudentSession(studentId, displayName == null ? session.getStudentName() : displayName, salonId);
+        Intent i = new Intent(this, StudentSalonActivity.class);
+        i.putExtra(StudentSalonActivity.EXTRA_SALON_ID, salonId);
+        i.putExtra(StudentSalonActivity.EXTRA_STUDENT_ID, studentId);
+        startActivity(i);
+        finish();
+    }
+
+    private void setLoading(boolean loading) {
+        if (btnLogin != null) {
+            btnLogin.setEnabled(!loading);
+            btnLogin.setText(loading ? R.string.login_loading : R.string.login);
+        }
     }
 
     private static String textOf(TextInputEditText e) {

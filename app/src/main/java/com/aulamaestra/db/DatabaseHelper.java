@@ -290,6 +290,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         c.getString(4),
                         c.getString(5),
                         c.getString(6),
+                        null,
+                        null,
                         c.getLong(7),
                         score,
                         c.isNull(9) ? null : c.getString(9)));
@@ -319,6 +321,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         c.getString(4),
                         c.getString(5),
                         c.getString(6),
+                        null,
+                        null,
                         c.getLong(7),
                         score,
                         c.isNull(9) ? null : c.getString(9)));

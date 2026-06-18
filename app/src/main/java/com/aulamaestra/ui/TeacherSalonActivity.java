@@ -46,6 +46,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
             return;
         }
         SalonViewModel vm = new ViewModelProvider(this).get(SalonViewModel.class);
+        vm.bindSalon(repo, salonId);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
@@ -72,6 +73,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
         });
 
         ViewPager2 pager = findViewById(R.id.pager);
+        pager.setOffscreenPageLimit(1);
         pager.setAdapter(new TeacherPagerAdapter(this, salonId));
         TabLayout tabs = findViewById(R.id.tabs);
         String[] titles = {
@@ -164,7 +166,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
         repo.insertPost(salonId, postType, title, body, fileUrl, new RepoCallback<Long>() {
             @Override
             public void onSuccess(Long id) {
-                vm.bump();
+                vm.bump(repo);
                 Toast.makeText(TeacherSalonActivity.this, "Publicado", Toast.LENGTH_SHORT).show();
                 d.dismiss();
             }

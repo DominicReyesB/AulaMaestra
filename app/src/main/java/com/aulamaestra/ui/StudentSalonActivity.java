@@ -33,13 +33,15 @@ public class StudentSalonActivity extends AppCompatActivity {
             finish();
             return;
         }
-        new ViewModelProvider(this).get(SalonViewModel.class);
+        SalonViewModel vm = new ViewModelProvider(this).get(SalonViewModel.class);
+        vm.bindSalon(repo, salonId);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(v -> {
-            // Volver al inicio sin borrar la sesión del alumno (evita duplicados al regresar).
-            startActivity(new Intent(this, LoginActivity.class));
+            Intent back = new Intent(this, LoginActivity.class);
+            back.putExtra(LoginActivity.EXTRA_MANUAL_LOGIN, true);
+            startActivity(back);
             finish();
         });
 
@@ -57,6 +59,7 @@ public class StudentSalonActivity extends AppCompatActivity {
         });
 
         ViewPager2 pager = findViewById(R.id.pager);
+        pager.setOffscreenPageLimit(1);
         pager.setAdapter(new StudentPagerAdapter(this, salonId, studentId));
         TabLayout tabs = findViewById(R.id.tabs);
         String[] titles = {

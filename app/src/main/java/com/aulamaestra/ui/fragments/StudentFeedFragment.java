@@ -16,7 +16,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
-import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.Post;
 import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
@@ -66,30 +65,24 @@ public class StudentFeedFragment extends Fragment {
         adapter = new FeedAdapter(new ArrayList<>());
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
-        vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
-    }
-
-    private void load() {
-        repo.listPosts(salonId, null, new RepoCallback<List<Post>>() {
-            @Override
-            public void onSuccess(List<Post> posts) {
-                List<Post> filtered = new ArrayList<>();
-                for (Post p : posts) {
-                    if (p.type != PostType.ASSIGNMENT) {
-                        filtered.add(p);
-                    }
-                }
-                adapter.replace(filtered);
-                empty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
-                empty.setText(R.string.no_classroom_posts);
-            }
-
-            @Override
-            public void onError(String message) {
+        vm.posts.observe(getViewLifecycleOwner(), posts -> applyPosts(posts == null ? new ArrayList<>() : posts));
+        vm.postsError.observe(getViewLifecycleOwner(), message -> {
+            if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void applyPosts(List<Post> posts) {
+        List<Post> filtered = new ArrayList<>();
+        for (Post p : posts) {
+            if (p.type != PostType.ASSIGNMENT) {
+                filtered.add(p);
+            }
+        }
+        adapter.replace(filtered);
+        empty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+        empty.setText(R.string.no_classroom_posts);
     }
 
     private static class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {

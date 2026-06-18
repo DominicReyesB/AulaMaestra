@@ -213,6 +213,24 @@ public class AulaRepository {
 
             @Override
             public void onError(String teacherErr) {
+                loginStudentOnly(username, password, cb);
+            }
+        });
+    }
+
+    private void loginStudentOnly(String username, String password, RepoCallback<AuthLoginResponse> cb) {
+        api.loginStudent(new AuthRequest(username, password)).enqueue(new Callback<AuthLoginResponse>() {
+            @Override
+            public void onResponse(Call<AuthLoginResponse> call, Response<AuthLoginResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    main.post(() -> cb.onSuccess(response.body()));
+                    return;
+                }
+                main.post(() -> cb.onError(errorMessage(response)));
+            }
+
+            @Override
+            public void onFailure(Call<AuthLoginResponse> call, Throwable t) {
                 main.post(() -> cb.onError(
                         "Nombre o contraseña incorrectos. Si eres alumno nuevo, regístrate primero."));
             }
@@ -230,7 +248,7 @@ public class AulaRepository {
                             return;
                         }
                         if (response.code() == 404 || response.code() == 405) {
-                            joinSalon(inviteCode, displayName, null, "register",
+                            joinSalon(inviteCode, displayName, null, "register", password,
                                     new RepoCallback<StudentJoinResult>() {
                                         @Override
                                         public void onSuccess(StudentJoinResult result) {
@@ -254,7 +272,7 @@ public class AulaRepository {
 
                     @Override
                     public void onFailure(Call<StudentJoinResponse> call, Throwable t) {
-                        joinSalon(inviteCode, displayName, null, "register",
+                        joinSalon(inviteCode, displayName, null, "register", password,
                                 new RepoCallback<StudentJoinResult>() {
                                     @Override
                                     public void onSuccess(StudentJoinResult result) {
@@ -327,7 +345,12 @@ public class AulaRepository {
 
     public void joinSalon(String inviteCode, String displayName, Long existingStudentId, String mode,
                           RepoCallback<StudentJoinResult> cb) {
-        enqueue(api.joinSalon(new StudentJoinRequest(inviteCode, displayName, existingStudentId, mode)),
+        joinSalon(inviteCode, displayName, existingStudentId, mode, null, cb);
+    }
+
+    public void joinSalon(String inviteCode, String displayName, Long existingStudentId, String mode,
+                          String password, RepoCallback<StudentJoinResult> cb) {
+        enqueue(api.joinSalon(new StudentJoinRequest(inviteCode, displayName, existingStudentId, mode, password)),
                 new RepoCallback<StudentJoinResponse>() {
                     @Override
                     public void onSuccess(StudentJoinResponse r) {

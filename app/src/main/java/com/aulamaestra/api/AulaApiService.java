@@ -46,6 +46,9 @@ public interface AulaApiService {
     @POST("api/students/register")
     Call<StudentJoinResponse> registerStudent(@Body StudentRegisterRequest body);
 
+    @POST("api/students/login")
+    Call<AuthLoginResponse> loginStudent(@Body AuthRequest body);
+
     @GET("api/teachers/{teacherId}/salons")
     Call<List<SalonDto>> listSalons(@Path("teacherId") long teacherId);
 
