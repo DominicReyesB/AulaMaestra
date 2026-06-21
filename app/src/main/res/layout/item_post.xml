@@ -60,7 +60,7 @@
             android:contentDescription="@string/delete_post"
             android:padding="12dp"
             android:src="@android:drawable/ic_menu_delete"
-            android:tint="@color/error"
+            app:tint="@color/error"
             android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

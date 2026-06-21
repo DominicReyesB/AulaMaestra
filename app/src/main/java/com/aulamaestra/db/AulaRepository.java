@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
@@ -271,7 +272,7 @@ public class AulaRepository {
     }
 
     private void loginLegacy(String username, String password, RepoCallback<AuthLoginResponse> cb) {
-        loginTeacher(username.toLowerCase(), password, new RepoCallback<Long>() {
+        loginTeacher(username.toLowerCase(Locale.ROOT), password, new RepoCallback<Long>() {
             @Override
             public void onSuccess(Long teacherId) {
                 AuthLoginResponse r = new AuthLoginResponse();
