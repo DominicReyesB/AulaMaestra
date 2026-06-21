@@ -13,6 +13,7 @@ const APP_DOWNLOAD_URL =
   process.env.APP_DOWNLOAD_URL ||
   'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.3.0/AulaMaestra-v1.3.0.apk';
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024 } });
