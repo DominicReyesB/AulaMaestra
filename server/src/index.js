@@ -2,29 +2,30 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
+const QRCode = require('qrcode');
 const { pool, query, execute, initDb, ensureSalonsForTeacher } = require('./db');
 const { hashPassword, verifyPassword } = require('./passwords');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const uploadDir = path.join(__dirname, '..', 'uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
+const APP_DOWNLOAD_URL =
+  process.env.APP_DOWNLOAD_URL ||
+  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.3.0/AulaMaestra-v1.3.0.apk';
 
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
-app.use('/files', express.static(uploadDir));
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const safe = Date.now() + '-' + (file.originalname || 'file').replace(/[^\w.\-]/g, '_');
-    cb(null, safe);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024 } });
 const helpRequests = new Map();
+
+function publicBase(req) {
+  const configured = process.env.PUBLIC_URL;
+  return (configured || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+}
+
+function cleanFileName(value) {
+  return path.basename(String(value || 'archivo')).replace(/[\r\n]/g, '_').slice(0, 255) || 'archivo';
+}
 
 async function upgradePassword(table, id, password, stored) {
   if (stored && !stored.startsWith('scrypt$')) {
@@ -91,6 +92,65 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true, db: 'mysql' }));
+
+app.get('/download', (_req, res) => {
+  res.redirect(302, APP_DOWNLOAD_URL);
+});
+
+app.get('/download/qr', async (req, res) => {
+  try {
+    const png = await QRCode.toBuffer(`${publicBase(req)}/download`, {
+      type: 'png',
+      width: 720,
+      margin: 3,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#202124', light: '#FFFFFF' },
+    });
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': png.length,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    res.send(png);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo generar el código QR' });
+  }
+});
+
+app.get('/files/:fileId/:fileName?', async (req, res) => {
+  try {
+    if (!/^\d+$/.test(req.params.fileId)) {
+      return res.status(410).send(
+        '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+        '<title>Archivo no disponible</title><body style="font-family:system-ui;padding:32px;line-height:1.5">' +
+        '<h2>Este archivo era de una versión anterior</h2>' +
+        '<p>El adjunto ya no está disponible. Pide a la maestra o maestro que vuelva a publicarlo.</p></body></html>'
+      );
+    }
+    const rows = await query(
+      'SELECT original_name, mime_type, data FROM uploaded_files WHERE id = ? LIMIT 1',
+      [req.params.fileId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Archivo no encontrado' });
+    }
+    const file = rows[0];
+    const fileName = cleanFileName(file.original_name);
+    const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+    res.set({
+      'Content-Type': file.mime_type || 'application/octet-stream',
+      'Content-Length': file.data.length,
+      'Content-Disposition': `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      'Cache-Control': 'private, max-age=3600',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.send(file.data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo abrir el archivo' });
+  }
+});
 
 app.get('/api/help/status', (_req, res) => {
   res.json({ available: Boolean(process.env.OPENAI_API_KEY) });
@@ -960,11 +1020,32 @@ app.post('/api/salons/:salonId/students/:studentId/messages', async (req, res) =
   }
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
-  const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
-  const url = `${base.replace(/\/$/, '')}/files/${req.file.filename}`;
-  res.json({ path: url, fileName: req.file.originalname });
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+    const fileName = cleanFileName(req.file.originalname);
+    const result = await execute(
+      `INSERT INTO uploaded_files (original_name, mime_type, data, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [fileName, req.file.mimetype || 'application/octet-stream', req.file.buffer, Date.now()]
+    );
+    const url = `${publicBase(req)}/files/${result.insertId}/${encodeURIComponent(fileName)}`;
+    res.json({ path: url, fileName });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo guardar el archivo' });
+  }
+});
+
+app.use((err, _req, res, next) => {
+  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'El archivo supera el límite de 40 MB' });
+  }
+  if (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error del servidor' });
+  }
+  next();
 });
 
 async function start() {

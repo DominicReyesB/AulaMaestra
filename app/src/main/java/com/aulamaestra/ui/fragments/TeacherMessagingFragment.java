@@ -26,6 +26,7 @@ import com.aulamaestra.ui.SalonViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class TeacherMessagingFragment extends Fragment {
     private static final String ARG_SALON = "salon_id";
@@ -140,7 +141,7 @@ public class TeacherMessagingFragment extends Fragment {
             Student s = data.get(position);
             h.name.setText(s.displayName);
             String initial = s.displayName != null && !s.displayName.isEmpty()
-                    ? s.displayName.substring(0, 1).toUpperCase()
+                    ? s.displayName.substring(0, 1).toUpperCase(Locale.getDefault())
                     : "?";
             h.avatar.setText(initial);
             h.chat.setOnClickListener(v -> openChat.onOpen(s));

@@ -19,6 +19,15 @@ CREATE TABLE IF NOT EXISTS students (
     password VARCHAR(255) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS uploaded_files (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(255) NOT NULL,
+    data LONGBLOB NOT NULL,
+    created_at BIGINT NOT NULL,
+    KEY idx_uploaded_files_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS enrollments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     student_id BIGINT NOT NULL,
