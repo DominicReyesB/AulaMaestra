@@ -127,22 +127,27 @@ public class TeacherPostsFragment extends Fragment {
     }
 
     private void confirmDelete(Post post) {
+        SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.delete_post)
                 .setMessage(R.string.delete_post_confirm)
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.delete_post, (d, w) -> repo.deletePost(post.id, new RepoCallback<Void>() {
+                .setPositiveButton(R.string.delete_post, (d, w) -> {
+                    vm.removePost(post.id);
+                    repo.deletePost(post.id, new RepoCallback<Void>() {
                     @Override
                     public void onSuccess(Void ignored) {
-                        new ViewModelProvider(requireActivity()).get(SalonViewModel.class).bump(repo);
+                        vm.bump(repo);
                         Toast.makeText(requireContext(), R.string.post_deleted, Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
                     public void onError(String message) {
+                        vm.addPost(post);
                         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                     }
-                }))
+                    });
+                })
                 .show();
     }
 
