@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
@@ -61,6 +62,9 @@ public class StudentAssignmentsFragment extends Fragment {
     private final Set<Long> submittedPostIds = new HashSet<>();
     private final List<Post> allAssignments = new ArrayList<>();
     private TextView attachmentsLabel;
+    private View clearAttachments;
+    private SwipeRefreshLayout refresh;
+    private View progress;
 
     public static StudentAssignmentsFragment newInstance(long salonId, long studentId) {
         StudentAssignmentsFragment f = new StudentAssignmentsFragment();
@@ -95,15 +99,23 @@ public class StudentAssignmentsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         RecyclerView rv = view.findViewById(R.id.recycler);
+        refresh = view.findViewById(R.id.swipeRefresh);
+        progress = view.findViewById(R.id.progressLoading);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         rv.setHasFixedSize(true);
         adapter = new AssignmentsAdapter(new ArrayList<>(), this::showSubmitDialog);
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
+        refresh.setColorSchemeResources(R.color.primary, R.color.secondary_dark);
+        refresh.setOnRefreshListener(() -> {
+            vm.refreshPosts(repo);
+            loadSubmittedAssignments();
+        });
         vm.posts.observe(getViewLifecycleOwner(), posts -> applyPosts(posts == null ? new ArrayList<>() : posts));
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> loadSubmittedAssignments());
         vm.postsError.observe(getViewLifecycleOwner(), message -> {
+            finishLoading();
             if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
@@ -122,10 +134,12 @@ public class StudentAssignmentsFragment extends Fragment {
                     adapter.setSubmittedPostIds(submittedPostIds);
                 }
                 renderPending();
+                finishLoading();
             }
 
             @Override
             public void onError(String message) {
+                finishLoading();
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
@@ -139,6 +153,12 @@ public class StudentAssignmentsFragment extends Fragment {
             }
         }
         renderPending();
+        if (!submittedPostIds.isEmpty() || posts.isEmpty()) finishLoading();
+    }
+
+    private void finishLoading() {
+        if (progress != null) progress.setVisibility(View.GONE);
+        if (refresh != null) refresh.setRefreshing(false);
     }
 
     private void renderPending() {
@@ -172,6 +192,7 @@ public class StudentAssignmentsFragment extends Fragment {
         }
         if (pendingAttachments.isEmpty()) {
             attachmentsLabel.setText(R.string.submit_none_yet);
+            if (clearAttachments != null) clearAttachments.setVisibility(View.GONE);
             return;
         }
         StringBuilder sb = new StringBuilder();
@@ -182,6 +203,7 @@ public class StudentAssignmentsFragment extends Fragment {
             sb.append("• ").append(p.displayName);
         }
         attachmentsLabel.setText(sb.toString());
+        if (clearAttachments != null) clearAttachments.setVisibility(View.VISIBLE);
     }
 
     private void showSubmitDialog(Post post) {
@@ -194,6 +216,11 @@ public class StudentAssignmentsFragment extends Fragment {
         TextInputEditText inputAnswer = form.findViewById(R.id.inputAnswer);
         TextInputEditText inputLink = form.findViewById(R.id.inputLink);
         attachmentsLabel = form.findViewById(R.id.textSubmitAttachments);
+        clearAttachments = form.findViewById(R.id.btnClearAttachments);
+        clearAttachments.setOnClickListener(v -> {
+            pendingAttachments.clear();
+            refreshAttachmentLabel();
+        });
         refreshAttachmentLabel();
 
         form.findViewById(R.id.btnPickPhoto).setOnClickListener(v -> {

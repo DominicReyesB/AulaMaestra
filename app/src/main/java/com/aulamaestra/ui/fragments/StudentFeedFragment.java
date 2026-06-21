@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
@@ -68,14 +69,24 @@ public class StudentFeedFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         RecyclerView rv = view.findViewById(R.id.recycler);
+        SwipeRefreshLayout refresh = view.findViewById(R.id.swipeRefresh);
+        View progress = view.findViewById(R.id.progressLoading);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         rv.setHasFixedSize(true);
         adapter = new FeedAdapter(new ArrayList<>());
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
-        vm.posts.observe(getViewLifecycleOwner(), posts -> applyPosts(posts == null ? new ArrayList<>() : posts));
+        refresh.setColorSchemeResources(R.color.primary, R.color.secondary_dark);
+        refresh.setOnRefreshListener(() -> vm.refreshPosts(repo));
+        vm.posts.observe(getViewLifecycleOwner(), posts -> {
+            progress.setVisibility(View.GONE);
+            refresh.setRefreshing(false);
+            applyPosts(posts == null ? new ArrayList<>() : posts);
+        });
         vm.postsError.observe(getViewLifecycleOwner(), message -> {
+            progress.setVisibility(View.GONE);
+            refresh.setRefreshing(false);
             if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }

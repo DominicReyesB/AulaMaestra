@@ -86,5 +86,14 @@
             android:layout_marginTop="@dimen/space_sm"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="@color/on_surface_variant" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearAttachments"
+            style="@style/Widget.Aula.Button.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="@string/clear_attachments"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>
