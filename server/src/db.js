@@ -80,6 +80,18 @@ async function migrateDb() {
   } catch (e) {
     if (e.code !== 'ER_DUP_KEYNAME') throw e;
   }
+
+  const indexes = [
+    'ALTER TABLE posts ADD KEY idx_posts_salon_type_created (salon_id, post_type, created_at)',
+    'ALTER TABLE messages ADD KEY idx_messages_thread_created (salon_id, student_id, created_at)',
+  ];
+  for (const sql of indexes) {
+    try {
+      await pool.query(sql);
+    } catch (e) {
+      if (e.code !== 'ER_DUP_KEYNAME') throw e;
+    }
+  }
 }
 
 function randomCode() {

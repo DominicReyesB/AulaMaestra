@@ -43,6 +43,8 @@ public class TeacherSalonActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> pickFile;
     private Uri pendingPostUri;
     private TextView activePostFileLabel;
+    private SalonViewModel salonViewModel;
+    private boolean hasResumed;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -53,8 +55,8 @@ public class TeacherSalonActivity extends AppCompatActivity {
             finish();
             return;
         }
-        SalonViewModel vm = new ViewModelProvider(this).get(SalonViewModel.class);
-        vm.bindSalon(repo, salonId);
+        salonViewModel = new ViewModelProvider(this).get(SalonViewModel.class);
+        salonViewModel.bindSalon(repo, salonId);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
@@ -95,14 +97,26 @@ public class TeacherSalonActivity extends AppCompatActivity {
         new TabLayoutMediator(tabs, pager, (tab, position) -> tab.setText(titles[position])).attach();
 
         FloatingActionButton fab = findViewById(R.id.fabPublish);
-        fab.setOnClickListener(v -> showNewPostDialog(salonId, vm));
+        fab.setOnClickListener(v -> showNewPostDialog(salonId, salonViewModel));
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 fab.setVisibility(position <= 1 ? View.VISIBLE : View.GONE);
+                if (position <= 1 && hasResumed) {
+                    salonViewModel.refreshPostsIfStale(repo);
+                }
             }
         });
         fab.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hasResumed && salonViewModel != null) {
+            salonViewModel.refreshPostsIfStale(repo);
+        }
+        hasResumed = true;
     }
 
     private void showNewPostDialog(long salonId, SalonViewModel vm) {
@@ -140,22 +154,30 @@ public class TeacherSalonActivity extends AppCompatActivity {
             }
             String b = textOf(body);
             final int finalPostType = postType;
+            setPublishBusy(d, true);
             if (pendingPostUri != null) {
-                String local = IoUtils.copyUriToFilesDir(this, pendingPostUri, "pub-" + System.currentTimeMillis());
-                if (local == null) {
-                    Toast.makeText(this, "No se pudo leer el archivo", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                repo.uploadLocalFile(local, new RepoCallback<String>() {
-                    @Override
-                    public void onSuccess(String url) {
-                        publishPost(salonId, finalPostType, t, b, url, vm, d);
+                Uri uri = pendingPostUri;
+                IoUtils.copyUriToFilesDirAsync(this, uri, "pub-" + System.currentTimeMillis(), local -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
                     }
+                    if (local == null) {
+                        setPublishBusy(d, false);
+                        Toast.makeText(this, "No se pudo leer el archivo", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    repo.uploadLocalFile(local, new RepoCallback<String>() {
+                        @Override
+                        public void onSuccess(String url) {
+                            publishPost(salonId, finalPostType, t, b, url, vm, d);
+                        }
 
-                    @Override
-                    public void onError(String message) {
-                        Toast.makeText(TeacherSalonActivity.this, message, Toast.LENGTH_SHORT).show();
-                    }
+                        @Override
+                        public void onError(String message) {
+                            setPublishBusy(d, false);
+                            Toast.makeText(TeacherSalonActivity.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 });
             } else {
                 publishPost(salonId, finalPostType, t, b, null, vm, d);
@@ -168,6 +190,8 @@ public class TeacherSalonActivity extends AppCompatActivity {
         repo.insertPost(salonId, postType, title, body, fileUrl, new RepoCallback<Long>() {
             @Override
             public void onSuccess(Long id) {
+                vm.addPost(new com.aulamaestra.model.Post(
+                        id, postType, title, body, fileUrl, System.currentTimeMillis()));
                 vm.bump(repo);
                 Toast.makeText(TeacherSalonActivity.this, "Publicado", Toast.LENGTH_SHORT).show();
                 d.dismiss();
@@ -175,9 +199,20 @@ public class TeacherSalonActivity extends AppCompatActivity {
 
             @Override
             public void onError(String message) {
+                setPublishBusy(d, false);
                 Toast.makeText(TeacherSalonActivity.this, message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void setPublishBusy(AlertDialog dialog, boolean busy) {
+        if (dialog == null || !dialog.isShowing()) {
+            return;
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(!busy);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText(
+                busy ? R.string.publishing : R.string.save);
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(!busy);
     }
 
     private static String textOf(TextInputEditText e) {

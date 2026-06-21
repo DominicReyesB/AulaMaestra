@@ -64,6 +64,7 @@ public class StudentAssignmentsFragment extends Fragment {
     private final List<Post> allAssignments = new ArrayList<>();
     private TextView attachmentsLabel;
     private View clearAttachments;
+    private int pendingCopies;
     private SwipeRefreshLayout refresh;
     private View progress;
 
@@ -178,13 +179,24 @@ public class StudentAssignmentsFragment extends Fragment {
             return;
         }
         String name = "adj-" + System.currentTimeMillis();
-        String path = IoUtils.copyUriToFilesDir(requireContext(), uri, name);
-        if (path == null) {
-            Toast.makeText(requireContext(), "No se pudo leer el archivo", Toast.LENGTH_SHORT).show();
-            return;
+        String kind = pendingPickKind;
+        pendingPickKind = null;
+        pendingCopies++;
+        if (attachmentsLabel != null) {
+            attachmentsLabel.setText(R.string.preparing_attachment);
         }
-        pendingAttachments.add(new PendingAttachment(pendingPickKind, path, new File(path).getName()));
-        refreshAttachmentLabel();
+        IoUtils.copyUriToFilesDirAsync(requireContext(), uri, name, path -> {
+            pendingCopies--;
+            if (!isAdded()) {
+                return;
+            }
+            if (path == null) {
+                Toast.makeText(requireContext(), "No se pudo leer el archivo", Toast.LENGTH_SHORT).show();
+            } else {
+                pendingAttachments.add(new PendingAttachment(kind, path, new File(path).getName()));
+            }
+            refreshAttachmentLabel();
+        });
     }
 
     private void refreshAttachmentLabel() {
@@ -245,6 +257,10 @@ public class StudentAssignmentsFragment extends Fragment {
                 .create();
         d.show();
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (pendingCopies > 0) {
+                Toast.makeText(requireContext(), R.string.wait_for_attachment, Toast.LENGTH_SHORT).show();
+                return;
+            }
             String text = textOf(inputAnswer);
             String link = textOf(inputLink);
             if (text.isEmpty() && link.isEmpty() && pendingAttachments.isEmpty()) {

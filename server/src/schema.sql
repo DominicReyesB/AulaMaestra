@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS posts (
     body TEXT,
     file_path TEXT,
     created_at BIGINT NOT NULL,
+    KEY idx_posts_salon_type_created (salon_id, post_type, created_at),
     CONSTRAINT fk_posts_salon FOREIGN KEY (salon_id) REFERENCES salons (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -78,6 +79,7 @@ CREATE TABLE IF NOT EXISTS messages (
     from_teacher TINYINT(1) NOT NULL,
     body TEXT NOT NULL,
     created_at BIGINT NOT NULL,
+    KEY idx_messages_thread_created (salon_id, student_id, created_at),
     CONSTRAINT fk_msg_salon FOREIGN KEY (salon_id) REFERENCES salons (id) ON DELETE CASCADE,
     CONSTRAINT fk_msg_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

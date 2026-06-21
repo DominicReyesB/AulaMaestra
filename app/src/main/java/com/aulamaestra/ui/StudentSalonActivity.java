@@ -30,6 +30,8 @@ public class StudentSalonActivity extends AppCompatActivity {
     private static final String INSTAGRAM_URL = "https://www.instagram.com/app_humanidades_class?igsh=MTF2bmY2c2VncGxzZA==";
 
     private final AulaRepository repo = AulaRepository.get();
+    private SalonViewModel salonViewModel;
+    private boolean hasResumed;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -41,8 +43,8 @@ public class StudentSalonActivity extends AppCompatActivity {
             finish();
             return;
         }
-        SalonViewModel vm = new ViewModelProvider(this).get(SalonViewModel.class);
-        vm.bindSalon(repo, salonId);
+        salonViewModel = new ViewModelProvider(this).get(SalonViewModel.class);
+        salonViewModel.bindSalon(repo, salonId);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
@@ -70,6 +72,14 @@ public class StudentSalonActivity extends AppCompatActivity {
         ViewPager2 pager = findViewById(R.id.pager);
         pager.setOffscreenPageLimit(1);
         pager.setAdapter(new StudentPagerAdapter(this, salonId, studentId));
+        pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                if (position <= 1 && hasResumed) {
+                    salonViewModel.refreshPostsIfStale(repo);
+                }
+            }
+        });
         TabLayout tabs = findViewById(R.id.tabs);
         String[] titles = {
                 getString(R.string.tab_classroom),
@@ -78,6 +88,15 @@ public class StudentSalonActivity extends AppCompatActivity {
                 getString(R.string.tab_messages)
         };
         new TabLayoutMediator(tabs, pager, (tab, position) -> tab.setText(titles[position])).attach();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hasResumed && salonViewModel != null) {
+            salonViewModel.refreshPostsIfStale(repo);
+        }
+        hasResumed = true;
     }
 
     private void addToolbarActions(MaterialToolbar toolbar) {

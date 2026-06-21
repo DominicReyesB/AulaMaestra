@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_DOWNLOAD_URL =
   process.env.APP_DOWNLOAD_URL ||
-  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.3.0/AulaMaestra-v1.3.0.apk';
+  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.4.0/AulaMaestra-v1.4.0.apk';
 
 app.set('trust proxy', 1);
 app.use(cors());
@@ -738,6 +738,7 @@ app.post('/api/salons/:salonId/students/:studentId/delete', deleteStudent);
 
 app.get('/api/salons/:salonId/posts', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const type = req.query.type;
     let rows;
     if (type === undefined || type === null || type === '') {
@@ -774,29 +775,15 @@ app.post('/api/salons/:salonId/posts', async (req, res) => {
 });
 
 async function deletePost(req, res) {
-  const connection = await pool.getConnection();
   try {
-    await connection.beginTransaction();
-    await connection.query(
-      `DELETE g FROM grades g
-       INNER JOIN submissions s ON s.id = g.submission_id
-       WHERE s.post_id = ?`,
-      [req.params.postId]
-    );
-    await connection.query('DELETE FROM submissions WHERE post_id = ?', [req.params.postId]);
-    const [result] = await connection.query('DELETE FROM posts WHERE id = ?', [req.params.postId]);
+    const result = await execute('DELETE FROM posts WHERE id = ?', [req.params.postId]);
     if (result.affectedRows === 0) {
-      await connection.rollback();
       return res.status(404).json({ error: 'Publicación no encontrada' });
     }
-    await connection.commit();
     res.json({ ok: true });
   } catch (e) {
-    await connection.rollback();
     console.error(e);
     res.status(500).json({ error: 'No se pudo eliminar la publicación' });
-  } finally {
-    connection.release();
   }
 }
 

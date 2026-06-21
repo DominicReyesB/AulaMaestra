@@ -18,6 +18,8 @@ public class SalonViewModel extends ViewModel {
     private long salonId = -1L;
     private boolean postsLoading;
     private boolean postsLoaded;
+    private boolean refreshPending;
+    private long lastRefreshAt;
 
     public void bindSalon(AulaRepository repo, long salonId) {
         if (this.salonId == salonId && postsLoaded) {
@@ -29,7 +31,11 @@ public class SalonViewModel extends ViewModel {
     }
 
     public void refreshPosts(AulaRepository repo) {
-        if (salonId < 0 || postsLoading) {
+        if (salonId < 0) {
+            return;
+        }
+        if (postsLoading) {
+            refreshPending = true;
             return;
         }
         postsLoading = true;
@@ -37,16 +43,61 @@ public class SalonViewModel extends ViewModel {
             @Override
             public void onSuccess(List<Post> list) {
                 postsLoading = false;
+                if (refreshPending) {
+                    refreshPending = false;
+                    refreshPosts(repo);
+                    return;
+                }
                 postsLoaded = true;
+                lastRefreshAt = System.currentTimeMillis();
                 posts.setValue(list == null ? new ArrayList<>() : list);
             }
 
             @Override
             public void onError(String message) {
                 postsLoading = false;
+                if (refreshPending) {
+                    refreshPending = false;
+                    refreshPosts(repo);
+                    return;
+                }
                 postsError.setValue(message);
             }
         });
+    }
+
+    public void refreshPostsIfStale(AulaRepository repo) {
+        if (!postsLoading && System.currentTimeMillis() - lastRefreshAt > 3_000L) {
+            refreshPosts(repo);
+        }
+    }
+
+    public void addPost(Post post) {
+        List<Post> updated = new ArrayList<>();
+        updated.add(post);
+        List<Post> current = posts.getValue();
+        if (current != null) {
+            for (Post item : current) {
+                if (item.id != post.id) {
+                    updated.add(item);
+                }
+            }
+        }
+        posts.setValue(updated);
+    }
+
+    public void removePost(long postId) {
+        List<Post> current = posts.getValue();
+        if (current == null) {
+            return;
+        }
+        List<Post> updated = new ArrayList<>();
+        for (Post item : current) {
+            if (item.id != postId) {
+                updated.add(item);
+            }
+        }
+        posts.setValue(updated);
     }
 
     public void bump(AulaRepository repo) {
