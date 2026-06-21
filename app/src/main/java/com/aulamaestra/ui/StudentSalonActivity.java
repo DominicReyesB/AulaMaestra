@@ -110,6 +110,20 @@ public class StudentSalonActivity extends AppCompatActivity {
     }
 
     private void showHelpDialog() {
+        repo.isAiHelpAvailable(new RepoCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean available) {
+                showHelpOptions(Boolean.TRUE.equals(available));
+            }
+
+            @Override
+            public void onError(String message) {
+                showHelpOptions(false);
+            }
+        });
+    }
+
+    private void showHelpOptions(boolean aiAvailable) {
         String[] questions = {
                 "¿Cómo entrego una tarea?",
                 "¿Puedo entregar dos veces la misma tarea?",
@@ -138,13 +152,26 @@ public class StudentSalonActivity extends AppCompatActivity {
                 "No. Tu cuenta pertenece a un solo salón para evitar confusiones con tareas y calificaciones.",
                 "Comprueba tu conexión y espera unos segundos. Si continúa, cierra y abre la app e inicia sesión nuevamente."
         };
+        String[] options = questions;
+        if (aiAvailable) {
+            options = new String[questions.length + 1];
+            options[0] = getString(R.string.ai_help_option);
+            System.arraycopy(questions, 0, options, 1, questions.length);
+        }
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle("Ayuda")
-                .setItems(questions, (dialog, which) -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(questions[which])
-                        .setMessage(answers[which])
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show())
+                .setItems(options, (dialog, which) -> {
+                    if (aiAvailable && which == 0) {
+                        AiHelpDialog.show(this);
+                        return;
+                    }
+                    int index = aiAvailable ? which - 1 : which;
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                            .setTitle(questions[index])
+                            .setMessage(answers[index])
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show();
+                })
                 .show();
     }
 

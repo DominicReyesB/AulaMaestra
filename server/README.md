@@ -18,6 +18,12 @@ Necesitas **dos** cosas en Railway, no una sola:
 5. Prueba en el navegador: `https://TU-DOMINIO.up.railway.app/health`  
    Debe mostrar: `{"ok":true,"db":"mysql"}`.
 
+### Chatbot opcional de Ayuda
+
+Para activarlo, agrega `OPENAI_API_KEY` en las variables del servicio API de Railway.
+La clave permanece en el servidor y nunca se incluye en la app Android. Puedes cambiar el
+modelo con `OPENAI_HELP_MODEL`; por defecto se usa `gpt-4o-mini`.
+
 Si abres `mysql://...` en el navegador **siempre dará error** (no es una página web).
 
 ## App Android

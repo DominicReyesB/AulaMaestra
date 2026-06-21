@@ -24,6 +24,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const helpRequests = new Map();
 
 async function upgradePassword(table, id, password, stored) {
   if (stored && !stored.startsWith('scrypt$')) {
@@ -90,6 +91,73 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true, db: 'mysql' }));
+
+app.get('/api/help/status', (_req, res) => {
+  res.json({ available: Boolean(process.env.OPENAI_API_KEY) });
+});
+
+app.post('/api/help/ask', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'El asistente de IA aún no está configurado' });
+  }
+  const question = String(req.body.question || '').trim();
+  if (!question) return res.status(400).json({ error: 'Escribe una pregunta' });
+  if (question.length > 600) {
+    return res.status(400).json({ error: 'La pregunta es demasiado larga' });
+  }
+
+  const requester = req.ip || 'unknown';
+  const now = Date.now();
+  const recent = (helpRequests.get(requester) || []).filter((time) => now - time < 10 * 60 * 1000);
+  if (recent.length >= 10) {
+    return res.status(429).json({ error: 'Espera unos minutos antes de hacer otra pregunta' });
+  }
+  recent.push(now);
+  helpRequests.set(requester, recent);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_HELP_MODEL || 'gpt-4o-mini',
+        store: false,
+        max_output_tokens: 350,
+        instructions:
+          'Eres el asistente de Aula Maestra. Responde en español claro, amable y breve. ' +
+          'Ayuda a alumnos y docentes con el uso de la app, tareas y dudas académicas de humanidades. ' +
+          'La app tiene Anuncios, Pendientes, Entregadas, Calificar y Mensajes. ' +
+          'No inventes datos del salón, calificaciones ni fechas. No pidas contraseñas ni datos personales.',
+        input: question,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('OpenAI help error', response.status, data.error?.message || data);
+      return res.status(502).json({ error: 'La IA no pudo responder en este momento' });
+    }
+    let answer = '';
+    for (const item of data.output || []) {
+      for (const content of item.content || []) {
+        if (content.type === 'output_text' && content.text) answer += content.text;
+      }
+    }
+    if (!answer.trim()) return res.status(502).json({ error: 'La IA no generó una respuesta' });
+    res.json({ answer: answer.trim() });
+  } catch (e) {
+    console.error('OpenAI help request failed', e.message);
+    res.status(502).json({ error: 'La IA no está disponible en este momento' });
+  } finally {
+    clearTimeout(timeout);
+  }
+});
 
 app.get('/api/stats', async (_req, res) => {
   try {
