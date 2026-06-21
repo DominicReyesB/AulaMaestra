@@ -55,6 +55,7 @@
     <string name="submit_video">Video</string>
     <string name="submit_file">Archivo</string>
     <string name="submit_none_yet">Sin archivos adjuntos todavía</string>
+    <string name="clear_attachments">Quitar archivos seleccionados</string>
     <string name="submit_need_content">Escribe algo, un enlace o adjunta un archivo</string>
     <string name="submit_ok">Tarea entregada</string>
     <string name="submit_already_sent">Esta tarea ya fue entregada. Solo se permite una entrega.</string>
@@ -79,6 +80,7 @@
     <string name="delete_submission">Eliminar entrega</string>
     <string name="delete_submission_confirm">¿Eliminar esta entrega? La tarea volverá a Pendientes y podrás enviarla nuevamente.</string>
     <string name="submission_deleted">Entrega eliminada</string>
+    <string name="graded_submission_locked">Las entregas calificadas ya no se pueden eliminar.</string>
     <string name="open_attachment">Abrir adjunto</string>
     <string name="published_at">Publicado: %1$s</string>
     <string name="submitted_at">Entregado: %1$s</string>

@@ -30,6 +30,8 @@ import com.aulamaestra.model.Post;
 import com.aulamaestra.model.Salon;
 import com.aulamaestra.model.Student;
 import com.aulamaestra.model.SubmissionRow;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 
 import java.io.File;
 import java.io.IOException;
@@ -124,11 +126,14 @@ public class AulaRepository {
                     public void onResponse(Call<OkResponse> call, Response<OkResponse> fallbackResponse) {
                         if (fallbackResponse.isSuccessful()) {
                             main.post(() -> cb.onSuccess(null));
-                        } else if (fallbackResponse.code() == 404 || fallbackResponse.code() == 405) {
-                            main.post(() -> cb.onError(
-                                    "El servidor necesita actualizarse para permitir eliminaciones."));
                         } else {
-                            main.post(() -> cb.onError(errorMessage(fallbackResponse)));
+                            String message = errorMessage(fallbackResponse);
+                            if ((fallbackResponse.code() == 404 || fallbackResponse.code() == 405)
+                                    && "Error del servidor".equals(message)) {
+                                message = "El servidor necesita actualizarse para permitir eliminaciones.";
+                            }
+                            String finalMessage = message;
+                            main.post(() -> cb.onError(finalMessage));
                         }
                     }
 
@@ -170,20 +175,13 @@ public class AulaRepository {
         try {
             if (response.errorBody() != null) {
                 String raw = response.errorBody().string();
-                if (raw.contains("error")) {
-                    int i = raw.indexOf("\"error\"");
-                    if (i >= 0) {
-                        int start = raw.indexOf(':', i) + 1;
-                        int q1 = raw.indexOf('"', start + 1);
-                        int q2 = raw.indexOf('"', q1 + 1);
-                        if (q1 >= 0 && q2 > q1) {
-                            return raw.substring(q1 + 1, q2);
-                        }
-                    }
+                JsonElement parsed = new JsonParser().parse(raw);
+                if (parsed.isJsonObject() && parsed.getAsJsonObject().has("error")) {
+                    return parsed.getAsJsonObject().get("error").getAsString();
                 }
                 return raw.length() > 120 ? "Error del servidor" : raw;
             }
-        } catch (IOException ignored) {
+        } catch (Exception ignored) {
         }
         return "Error " + response.code();
     }

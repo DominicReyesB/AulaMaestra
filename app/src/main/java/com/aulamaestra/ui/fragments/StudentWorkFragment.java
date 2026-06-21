@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.aulamaestra.R;
 import android.widget.Toast;
@@ -43,6 +44,8 @@ public class StudentWorkFragment extends Fragment {
     private long studentId;
     private WorkAdapter adapter;
     private TextView empty;
+    private SwipeRefreshLayout refresh;
+    private View progress;
 
     public static StudentWorkFragment newInstance(long salonId, long studentId) {
         StudentWorkFragment f = new StudentWorkFragment();
@@ -74,6 +77,8 @@ public class StudentWorkFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         RecyclerView rv = view.findViewById(R.id.recycler);
+        refresh = view.findViewById(R.id.swipeRefresh);
+        progress = view.findViewById(R.id.progressLoading);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         rv.setHasFixedSize(true);
@@ -89,6 +94,8 @@ public class StudentWorkFragment extends Fragment {
             }
         });
         rv.setAdapter(adapter);
+        refresh.setColorSchemeResources(R.color.primary, R.color.secondary_dark);
+        refresh.setOnRefreshListener(this::load);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
     }
@@ -138,6 +145,7 @@ public class StudentWorkFragment extends Fragment {
         repo.listSubmissionsForStudent(salonId, studentId, new RepoCallback<List<SubmissionRow>>() {
             @Override
             public void onSuccess(List<SubmissionRow> rows) {
+                finishLoading();
                 adapter.replace(rows);
                 boolean isEmpty = rows.isEmpty();
                 empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
@@ -146,9 +154,15 @@ public class StudentWorkFragment extends Fragment {
 
             @Override
             public void onError(String message) {
+                finishLoading();
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void finishLoading() {
+        if (progress != null) progress.setVisibility(View.GONE);
+        if (refresh != null) refresh.setRefreshing(false);
     }
 
     private static class WorkAdapter extends RecyclerView.Adapter<WorkAdapter.VH> {
@@ -200,7 +214,7 @@ public class StudentWorkFragment extends Fragment {
                     || !SubmissionAttachments.fromJson(r.attachmentsJson).isEmpty();
             h.open.setVisibility(hasAttachment ? View.VISIBLE : View.GONE);
             h.open.setOnClickListener(v -> listener.onOpen(r));
-            h.delete.setVisibility(View.VISIBLE);
+            h.delete.setVisibility(r.score == null ? View.VISIBLE : View.GONE);
             h.delete.setOnClickListener(v -> listener.onDelete(r));
         }
 

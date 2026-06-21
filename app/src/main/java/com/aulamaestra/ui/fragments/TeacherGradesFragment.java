@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.aulamaestra.R;
 import com.aulamaestra.db.AulaRepository;
@@ -42,6 +43,8 @@ public class TeacherGradesFragment extends Fragment {
     private long salonId;
     private GradeAdapter adapter;
     private TextView empty;
+    private SwipeRefreshLayout refresh;
+    private View progress;
 
     public static TeacherGradesFragment newInstance(long salonId) {
         TeacherGradesFragment f = new TeacherGradesFragment();
@@ -71,11 +74,15 @@ public class TeacherGradesFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         RecyclerView rv = view.findViewById(R.id.recycler);
+        refresh = view.findViewById(R.id.swipeRefresh);
+        progress = view.findViewById(R.id.progressLoading);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         rv.setHasFixedSize(true);
         adapter = new GradeAdapter(new ArrayList<>(), row -> showGradeDialog(row));
         rv.setAdapter(adapter);
+        refresh.setColorSchemeResources(R.color.primary, R.color.secondary_dark);
+        refresh.setOnRefreshListener(this::load);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
     }
@@ -84,6 +91,7 @@ public class TeacherGradesFragment extends Fragment {
         repo.listSubmissionsForSalon(salonId, new RepoCallback<List<SubmissionRow>>() {
             @Override
             public void onSuccess(List<SubmissionRow> rows) {
+                finishLoading();
                 adapter.replace(rows);
                 boolean isEmpty = rows.isEmpty();
                 empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
@@ -92,9 +100,15 @@ public class TeacherGradesFragment extends Fragment {
 
             @Override
             public void onError(String message) {
+                finishLoading();
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void finishLoading() {
+        if (progress != null) progress.setVisibility(View.GONE);
+        if (refresh != null) refresh.setRefreshing(false);
     }
 
     private void showGradeDialog(SubmissionRow row) {

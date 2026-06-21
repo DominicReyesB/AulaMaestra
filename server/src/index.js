@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { pool, query, execute, initDb, ensureSalonsForTeacher } = require('./db');
+const { hashPassword, verifyPassword } = require('./passwords');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,12 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+
+async function upgradePassword(table, id, password, stored) {
+  if (stored && !stored.startsWith('scrypt$')) {
+    await execute(`UPDATE ${table} SET password = ? WHERE id = ?`, [await hashPassword(password), id]);
+  }
+}
 
 function salonRow(r) {
   return {
@@ -112,7 +119,7 @@ app.post('/api/teachers/register', async (req, res) => {
     }
     const result = await execute(
       'INSERT INTO teachers (username, password) VALUES (?, ?)',
-      [username, password]
+      [username, await hashPassword(password)]
     );
     const teacherId = result.insertId;
     await ensureSalonsForTeacher(teacherId);
@@ -128,13 +135,11 @@ app.post('/api/teachers/login', async (req, res) => {
   try {
     const username = String(req.body.username || '').trim().toLowerCase();
     const password = String(req.body.password || '');
-    const rows = await query(
-      'SELECT id FROM teachers WHERE username = ? AND password = ?',
-      [username, password]
-    );
-    if (rows.length === 0) {
+    const rows = await query('SELECT id, password FROM teachers WHERE username = ?', [username]);
+    if (rows.length === 0 || !(await verifyPassword(password, rows[0].password))) {
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
+    await upgradePassword('teachers', rows[0].id, password, rows[0].password);
     const teacherId = rows[0].id;
     await ensureSalonsForTeacher(teacherId);
     res.json({ id: Number(teacherId) });
@@ -159,9 +164,10 @@ async function authenticateStudent(username, password) {
     if (student.password == null || student.password === '') {
       return { error: 'Tu cuenta no tiene contraseña. Ve a Registrarse y usa el mismo nombre para actualizarla.' };
     }
-    if (student.password !== password) {
+    if (!(await verifyPassword(password, student.password))) {
       return null;
     }
+    await upgradePassword('students', student.id, password, student.password);
     return student;
   } catch (e) {
     if (e.code !== 'ER_BAD_FIELD_ERROR') {
@@ -195,7 +201,7 @@ async function saveStudentPassword(studentId, password) {
     return;
   }
   try {
-    await execute('UPDATE students SET password = ? WHERE id = ?', [password, studentId]);
+    await execute('UPDATE students SET password = ? WHERE id = ?', [await hashPassword(password), studentId]);
   } catch (e) {
     if (e.code !== 'ER_BAD_FIELD_ERROR') {
       throw e;
@@ -207,7 +213,7 @@ async function createStudentWithPassword(displayName, password) {
   try {
     const created = await execute('INSERT INTO students (display_name, password) VALUES (?, ?)', [
       displayName,
-      password,
+      await hashPassword(password),
     ]);
     return Number(created.insertId);
   } catch (e) {
@@ -248,11 +254,12 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const teachers = await query(
-      'SELECT id FROM teachers WHERE LOWER(username) = LOWER(?) AND password = ?',
-      [username, password]
+      'SELECT id, password FROM teachers WHERE LOWER(username) = LOWER(?)',
+      [username]
     );
-    if (teachers.length > 0) {
+    if (teachers.length > 0 && await verifyPassword(password, teachers[0].password)) {
       const teacherId = Number(teachers[0].id);
+      await upgradePassword('teachers', teacherId, password, teachers[0].password);
       await ensureSalonsForTeacher(teacherId);
       return res.json({ role: 'teacher', teacherId });
     }
@@ -721,6 +728,14 @@ async function deleteSubmission(req, res) {
     if (owned.length === 0) {
       await connection.rollback();
       return res.status(404).json({ error: 'Entrega no encontrada' });
+    }
+    const [grades] = await connection.query(
+      'SELECT id FROM grades WHERE submission_id = ? LIMIT 1',
+      [req.params.submissionId]
+    );
+    if (grades.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Una entrega ya calificada no se puede eliminar' });
     }
     await connection.query('DELETE FROM grades WHERE submission_id = ?', [req.params.submissionId]);
     const [result] = await connection.query(

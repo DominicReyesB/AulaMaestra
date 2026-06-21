@@ -127,7 +127,7 @@ public class StudentSalonActivity extends AppCompatActivity {
         String[] answers = {
                 "Entra a Pendientes, toca Entregar tarea, agrega tu respuesta, enlace o archivo y confirma.",
                 "Solo puede haber una entrega activa. Si te equivocaste, elimínala desde Entregadas y vuelve a enviarla desde Pendientes.",
-                "Entra a Entregadas, toca la papelera de la tarea y confirma. Después aparecerá otra vez en Pendientes.",
+                "Entra a Entregadas, toca la papelera y confirma. Volverá a Pendientes. Si ya fue calificada, queda protegida y no se puede borrar.",
                 "En la pestaña Pendientes aparecen solamente las tareas que todavía no has enviado.",
                 "En la pestaña Entregadas aparecen tus respuestas, adjuntos, fecha de envío y calificación.",
                 "Entra a Entregadas. Debajo de cada tarea aparece la calificación o el aviso Pendiente de calificación.",
