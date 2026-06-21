@@ -28,9 +28,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         session = new SessionManager(this);
-        if (!getIntent().getBooleanExtra(EXTRA_MANUAL_LOGIN, false) && restoreSavedSession()) {
-            return;
-        }
+        session.clearAll();
         setContentView(R.layout.activity_login);
         inputUser = findViewById(R.id.inputUser);
         inputPass = findViewById(R.id.inputPass);
@@ -39,24 +37,6 @@ public class LoginActivity extends AppCompatActivity {
         findViewById(R.id.btnLogin).setOnClickListener(v -> doLogin());
         findViewById(R.id.btnGoRegister).setOnClickListener(v ->
                 startActivity(new Intent(this, RegisterActivity.class)));
-    }
-
-    private boolean restoreSavedSession() {
-        long teacherId = session.getTeacherId();
-        if (teacherId > 0) {
-            startActivity(new Intent(this, TeacherSalonsActivity.class));
-            finish();
-            return true;
-        }
-        if (session.hasStudentSession()) {
-            long studentId = session.getStudentId();
-            long salonId = session.getLastSalonId();
-            if (studentId > 0 && salonId > 0) {
-                openStudent(studentId, salonId, session.getStudentName());
-                return true;
-            }
-        }
-        return false;
     }
 
     private void doLogin() {

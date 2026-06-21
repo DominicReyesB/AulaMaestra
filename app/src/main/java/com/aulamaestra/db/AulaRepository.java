@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -48,7 +49,7 @@ import retrofit2.Response;
 public class AulaRepository {
     private static AulaRepository instance;
     private final AulaApiService api = ApiClient.api();
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService executor = Executors.newFixedThreadPool(3);
     private final Handler main = new Handler(Looper.getMainLooper());
 
     public static synchronized AulaRepository get() {
@@ -104,6 +105,45 @@ public class AulaRepository {
             @Override
             public void onFailure(Call<OkResponse> call, Throwable t) {
                 main.post(() -> cb.onError(t.getMessage() != null ? t.getMessage() : "Sin conexión al servidor"));
+            }
+        });
+    }
+
+    private void runOkWithFallback(Call<OkResponse> primary,
+                                   Supplier<Call<OkResponse>> fallback,
+                                   RepoCallback<Void> cb) {
+        primary.enqueue(new Callback<OkResponse>() {
+            @Override
+            public void onResponse(Call<OkResponse> call, Response<OkResponse> response) {
+                if (response.isSuccessful()) {
+                    main.post(() -> cb.onSuccess(null));
+                    return;
+                }
+                fallback.get().enqueue(new Callback<OkResponse>() {
+                    @Override
+                    public void onResponse(Call<OkResponse> call, Response<OkResponse> fallbackResponse) {
+                        if (fallbackResponse.isSuccessful()) {
+                            main.post(() -> cb.onSuccess(null));
+                        } else if (fallbackResponse.code() == 404 || fallbackResponse.code() == 405) {
+                            main.post(() -> cb.onError(
+                                    "El servidor necesita actualizarse para permitir eliminaciones."));
+                        } else {
+                            main.post(() -> cb.onError(errorMessage(fallbackResponse)));
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<OkResponse> call, Throwable t) {
+                        main.post(() -> cb.onError(
+                                t.getMessage() != null ? t.getMessage() : "Sin conexión al servidor"));
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call<OkResponse> call, Throwable t) {
+                main.post(() -> cb.onError(
+                        t.getMessage() != null ? t.getMessage() : "Sin conexión al servidor"));
             }
         });
     }
@@ -391,9 +431,20 @@ public class AulaRepository {
         });
     }
 
+    public void deleteStudentFromSalon(long salonId, long studentId, RepoCallback<Void> cb) {
+        runOkWithFallback(
+                api.deleteStudent(salonId, studentId),
+                () -> api.deleteStudentCompatible(salonId, studentId),
+                cb);
+    }
+
     public void insertPost(long salonId, int postType, String title, String body, String filePath,
                            RepoCallback<Long> cb) {
         enqueueId(api.createPost(salonId, new PostCreateRequest(postType, title, body, filePath)), cb);
+    }
+
+    public void deletePost(long postId, RepoCallback<Void> cb) {
+        runOkWithFallback(api.deletePost(postId), () -> api.deletePostCompatible(postId), cb);
     }
 
     public void listPosts(long salonId, Integer typeFilter, RepoCallback<List<Post>> cb) {
@@ -418,6 +469,13 @@ public class AulaRepository {
                                  String linkUrl, String attachmentsJson, RepoCallback<Void> cb) {
         runId(api.submit(postId, new SubmissionCreateRequest(
                 studentId, text, filePath, linkUrl, attachmentsJson)), cb);
+    }
+
+    public void deleteSubmission(long submissionId, long studentId, RepoCallback<Void> cb) {
+        runOkWithFallback(
+                api.deleteSubmission(submissionId, studentId),
+                () -> api.deleteSubmissionCompatible(submissionId, studentId),
+                cb);
     }
 
     public void listSubmissionsForSalon(long salonId, RepoCallback<List<SubmissionRow>> cb) {

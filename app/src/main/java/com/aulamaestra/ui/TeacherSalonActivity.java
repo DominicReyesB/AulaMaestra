@@ -1,8 +1,11 @@
 package com.aulamaestra.ui;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -12,6 +15,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -30,6 +36,8 @@ import com.google.android.material.textfield.TextInputEditText;
 
 public class TeacherSalonActivity extends AppCompatActivity {
     public static final String EXTRA_SALON_ID = "salon_id";
+    private static final String TIKTOK_URL = "https://www.tiktok.com/@app_humanidade_cl?_r=1&_t=ZS-97JrK3R7Nbh";
+    private static final String INSTAGRAM_URL = "https://www.instagram.com/app_humanidades_class?igsh=MTF2bmY2c2VncGxzZA==";
 
     private final AulaRepository repo = AulaRepository.get();
     private ActivityResultLauncher<String> pickFile;
@@ -51,6 +59,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(v -> finish());
+        addToolbarActions(toolbar);
 
         repo.findSalonById(salonId, new RepoCallback<Salon>() {
             @Override
@@ -79,7 +88,6 @@ public class TeacherSalonActivity extends AppCompatActivity {
         String[] titles = {
                 getString(R.string.tab_announcements),
                 getString(R.string.tab_assignments),
-                getString(R.string.tab_files),
                 getString(R.string.tab_roster),
                 getString(R.string.tab_grades),
                 getString(R.string.tab_messages)
@@ -91,7 +99,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
-                fab.setVisibility(position <= 2 ? View.VISIBLE : View.GONE);
+                fab.setVisibility(position <= 1 ? View.VISIBLE : View.GONE);
             }
         });
         fab.setVisibility(View.VISIBLE);
@@ -102,6 +110,10 @@ public class TeacherSalonActivity extends AppCompatActivity {
         View form = getLayoutInflater().inflate(R.layout.dialog_new_publication, null);
         MaterialButtonToggleGroup typeGroup = form.findViewById(R.id.typeGroup);
         typeGroup.check(R.id.typeAnnouncement);
+        View typeFile = form.findViewById(R.id.typeFile);
+        if (typeFile != null) {
+            typeFile.setVisibility(View.GONE);
+        }
         TextInputEditText title = form.findViewById(R.id.inputTitle);
         TextInputEditText body = form.findViewById(R.id.inputBody);
         TextView picked = form.findViewById(R.id.textPickedFile);
@@ -120,20 +132,10 @@ public class TeacherSalonActivity extends AppCompatActivity {
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             int checked = typeGroup.getCheckedButtonId();
             int postType;
-            if (checked == R.id.typeAssignment) {
-                postType = PostType.ASSIGNMENT;
-            } else if (checked == R.id.typeFile) {
-                postType = PostType.FILE;
-            } else {
-                postType = PostType.ANNOUNCEMENT;
-            }
+            postType = checked == R.id.typeAssignment ? PostType.ASSIGNMENT : PostType.ANNOUNCEMENT;
             String t = textOf(title);
             if (TextUtils.isEmpty(t)) {
                 Toast.makeText(this, "El título es obligatorio", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (postType == PostType.FILE && pendingPostUri == null) {
-                Toast.makeText(this, "Selecciona un archivo", Toast.LENGTH_SHORT).show();
                 return;
             }
             String b = textOf(body);
@@ -183,5 +185,81 @@ public class TeacherSalonActivity extends AppCompatActivity {
             return "";
         }
         return e.getText().toString().trim();
+    }
+
+    private void addToolbarActions(MaterialToolbar toolbar) {
+        toolbar.getMenu().add(Menu.NONE, 1, 1, "Ayuda")
+                .setIcon(tintedIcon(android.R.drawable.ic_menu_help))
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        toolbar.getMenu().add(Menu.NONE, 2, 2, "Redes sociales")
+                .setIcon(tintedIcon(android.R.drawable.ic_menu_share))
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 1) {
+                showHelpDialog();
+                return true;
+            }
+            if (item.getItemId() == 2) {
+                showSocialDialog();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private android.graphics.drawable.Drawable tintedIcon(int resourceId) {
+        android.graphics.drawable.Drawable icon = AppCompatResources.getDrawable(this, resourceId);
+        if (icon != null) {
+            icon = DrawableCompat.wrap(icon).mutate();
+            DrawableCompat.setTint(icon, ContextCompat.getColor(this, R.color.on_primary));
+        }
+        return icon;
+    }
+
+    private void showHelpDialog() {
+        String[] questions = {
+                "¿Cómo publico una tarea?",
+                "¿Cómo publico un anuncio?",
+                "¿Cómo abro un archivo adjunto?",
+                "¿Cómo elimino una publicación?",
+                "¿Cómo califico una entrega?",
+                "¿Qué calificación puedo poner?",
+                "¿Dónde veo los archivos enviados?",
+                "¿Cómo elimino a un alumno?",
+                "¿Cómo envío un mensaje?",
+                "¿Qué hago si la app tarda en cargar?"
+        };
+        String[] answers = {
+                "Toca el botón +, elige Tarea, escribe título y descripción, agrega archivo si lo necesitas y guarda.",
+                "Toca el botón +, deja seleccionada la opción Anuncio, completa la información y presiona Guardar.",
+                "Toca el nombre del archivo dentro del anuncio o tarea. Se abrirá con una aplicación compatible.",
+                "En Anuncios o Tareas, toca el icono de papelera y confirma. También se eliminarán las entregas relacionadas.",
+                "Entra a Calificar, toca la entrega del alumno, revisa el adjunto y presiona Calificar.",
+                "Solo se permiten calificaciones de 0 a 10. La app no guardará números fuera de ese rango.",
+                "En Calificar, toca la entrega y usa Ver adjunto para abrir el enlace o archivo que envió el alumno.",
+                "Entra a Alumnos, toca la papelera junto al nombre y confirma. Se borrarán también sus entregas y mensajes.",
+                "Entra a Mensajes, elige al alumno, escribe el mensaje y presiona Enviar.",
+                "Comprueba tu conexión y espera unos segundos. Si continúa, cierra y abre la app; tus publicaciones guardadas no se pierden."
+        };
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Ayuda")
+                .setItems(questions, (dialog, which) -> new MaterialAlertDialogBuilder(this)
+                        .setTitle(questions[which])
+                        .setMessage(answers[which])
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show())
+                .show();
+    }
+
+    private void showSocialDialog() {
+        String[] networks = {"TikTok", "Instagram"};
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Redes sociales")
+                .setItems(networks, (dialog, which) -> openUrl(which == 0 ? TIKTOK_URL : INSTAGRAM_URL))
+                .show();
+    }
+
+    private void openUrl(String url) {
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
 }

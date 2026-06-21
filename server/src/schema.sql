@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
     student_id BIGINT NOT NULL,
     salon_id BIGINT NOT NULL,
     UNIQUE KEY uk_enrollment (student_id, salon_id),
+    UNIQUE KEY uk_enrollment_one_salon_per_student (student_id),
     CONSTRAINT fk_enroll_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
     CONSTRAINT fk_enroll_salon FOREIGN KEY (salon_id) REFERENCES salons (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

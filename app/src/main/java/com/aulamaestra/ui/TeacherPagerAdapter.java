@@ -28,10 +28,8 @@ public class TeacherPagerAdapter extends FragmentStateAdapter {
             case 1:
                 return TeacherPostsFragment.newInstance(salonId, PostType.ASSIGNMENT);
             case 2:
-                return TeacherPostsFragment.newInstance(salonId, PostType.FILE);
-            case 3:
                 return TeacherRosterFragment.newInstance(salonId);
-            case 4:
+            case 3:
                 return TeacherGradesFragment.newInstance(salonId);
             default:
                 return TeacherMessagingFragment.newInstance(salonId);
@@ -40,6 +38,6 @@ public class TeacherPagerAdapter extends FragmentStateAdapter {
 
     @Override
     public int getItemCount() {
-        return 6;
+        return 5;
     }
 }

@@ -43,5 +43,25 @@
             android:textAppearance="?attr/textAppearanceLabelMedium"
             android:textColor="@color/primary_dark"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/textPostDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/on_surface_variant" />
+
+        <ImageButton
+            android:id="@+id/buttonDeletePost"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/delete_post"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@color/error"
+            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -67,6 +67,19 @@ async function migrateDb() {
       if (e.code !== 'ER_DUP_FIELDNAME') throw e;
     }
   }
+
+  await pool.query(
+    `DELETE older FROM enrollments older
+     INNER JOIN enrollments newer
+       ON older.student_id = newer.student_id AND older.id < newer.id`
+  );
+  try {
+    await pool.query(
+      'ALTER TABLE enrollments ADD UNIQUE KEY uk_enrollment_one_salon_per_student (student_id)'
+    );
+  } catch (e) {
+    if (e.code !== 'ER_DUP_KEYNAME') throw e;
+  }
 }
 
 function randomCode() {

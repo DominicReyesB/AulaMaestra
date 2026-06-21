@@ -55,7 +55,6 @@ public class TeacherSalonsActivity extends AppCompatActivity {
             startActivity(i);
         });
         rv.setAdapter(adapter);
-        loadSalons();
     }
 
     @Override

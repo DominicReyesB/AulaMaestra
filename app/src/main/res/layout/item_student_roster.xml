@@ -5,15 +5,32 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="@dimen/space_xs">
 
-    <TextView
-        android:id="@+id/textRosterName"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_roster_row"
-        android:drawablePadding="@dimen/space_md"
         android:gravity="center_vertical"
         android:minHeight="52dp"
-        android:padding="@dimen/space_md"
-        android:textAppearance="?attr/textAppearanceBodyLarge"
-        android:textColor="@color/on_surface" />
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/space_md"
+        android:paddingEnd="@dimen/space_xs">
+
+        <TextView
+            android:id="@+id/textRosterName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/on_surface" />
+
+        <ImageButton
+            android:id="@+id/buttonDeleteStudent"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/delete_student"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@color/error" />
+    </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,16 @@
+# Android / Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.jks
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/shelf/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

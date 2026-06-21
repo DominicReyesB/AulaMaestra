@@ -321,11 +321,21 @@ app.post('/api/students/register', async (req, res) => {
     const salon = salonRows[0];
 
     const dup = await query(
-      'SELECT id FROM students WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?)) ORDER BY id DESC',
+      'SELECT id, password FROM students WHERE LOWER(TRIM(display_name)) = LOWER(TRIM(?)) ORDER BY id DESC',
       [displayName]
     );
     if (dup.length > 0) {
       const studentId = Number(dup[0].id);
+      const enrollment = await query(
+        'SELECT salon_id FROM enrollments WHERE student_id = ? LIMIT 1',
+        [studentId]
+      );
+      if (enrollment.length > 0 && Number(enrollment[0].salon_id) !== Number(salon.id)) {
+        return res.status(409).json({ error: 'Este alumno ya pertenece a otro salón' });
+      }
+      if (dup[0].password != null && dup[0].password !== '') {
+        return res.status(409).json({ error: 'Ese nombre ya está registrado. Inicia sesión con tu contraseña.' });
+      }
       await saveStudentPassword(studentId, password);
       await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
         studentId,
@@ -483,6 +493,15 @@ app.post('/api/students/join-salon', async (req, res) => {
       }
     }
 
+    const currentEnrollment = await query(
+      'SELECT salon_id FROM enrollments WHERE student_id = ? LIMIT 1',
+      [finalStudentId]
+    );
+    if (currentEnrollment.length > 0 &&
+        Number(currentEnrollment[0].salon_id) !== Number(salon.id)) {
+      return res.status(409).json({ error: 'Este alumno ya pertenece a otro salón' });
+    }
+
     await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
       finalStudentId,
       salon.id,
@@ -528,6 +547,13 @@ app.get('/api/students/:studentId', async (req, res) => {
 app.post('/api/salons/:salonId/enroll', async (req, res) => {
   try {
     const studentId = Number(req.body.studentId);
+    const current = await query(
+      'SELECT salon_id FROM enrollments WHERE student_id = ? LIMIT 1',
+      [studentId]
+    );
+    if (current.length > 0 && Number(current[0].salon_id) !== Number(req.params.salonId)) {
+      return res.status(409).json({ error: 'Este alumno ya pertenece a otro salón' });
+    }
     await execute('INSERT IGNORE INTO enrollments (student_id, salon_id) VALUES (?, ?)', [
       studentId,
       req.params.salonId,
@@ -553,6 +579,26 @@ app.get('/api/salons/:salonId/students', async (req, res) => {
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
+
+async function deleteStudent(req, res) {
+  try {
+    const enrolled = await query(
+      'SELECT id FROM enrollments WHERE salon_id = ? AND student_id = ?',
+      [req.params.salonId, req.params.studentId]
+    );
+    if (enrolled.length === 0) {
+      return res.status(404).json({ error: 'El alumno no pertenece a este salón' });
+    }
+    await execute('DELETE FROM students WHERE id = ?', [req.params.studentId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo eliminar al alumno' });
+  }
+}
+
+app.delete('/api/salons/:salonId/students/:studentId', deleteStudent);
+app.post('/api/salons/:salonId/students/:studentId/delete', deleteStudent);
 
 app.get('/api/salons/:salonId/posts', async (req, res) => {
   try {
@@ -591,6 +637,36 @@ app.post('/api/salons/:salonId/posts', async (req, res) => {
   }
 });
 
+async function deletePost(req, res) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      `DELETE g FROM grades g
+       INNER JOIN submissions s ON s.id = g.submission_id
+       WHERE s.post_id = ?`,
+      [req.params.postId]
+    );
+    await connection.query('DELETE FROM submissions WHERE post_id = ?', [req.params.postId]);
+    const [result] = await connection.query('DELETE FROM posts WHERE id = ?', [req.params.postId]);
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Publicación no encontrada' });
+    }
+    await connection.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await connection.rollback();
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo eliminar la publicación' });
+  } finally {
+    connection.release();
+  }
+}
+
+app.delete('/api/posts/:postId', deletePost);
+app.post('/api/posts/:postId/delete', deletePost);
+
 app.post('/api/posts/:postId/submissions', async (req, res) => {
   try {
     const postId = Number(req.params.postId);
@@ -604,46 +680,70 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
       'SELECT id FROM submissions WHERE post_id = ? AND student_id = ?',
       [postId, studentId]
     );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'Esta tarea ya fue entregada. Solo se permite una entrega por tarea.' });
+    }
     try {
-      if (existing.length > 0) {
-        await execute(
-          `UPDATE submissions SET text_answer = ?, file_path = ?, link_url = ?,
-           attachments_json = ?, submitted_at = ? WHERE id = ?`,
-          [textAnswer, filePath, linkUrl, attachmentsJson, now, existing[0].id]
-        );
-        res.json({ id: Number(existing[0].id) });
-      } else {
-        const result = await execute(
-          `INSERT INTO submissions (post_id, student_id, text_answer, file_path, link_url, attachments_json, submitted_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [postId, studentId, textAnswer, filePath, linkUrl, attachmentsJson, now]
-        );
-        res.json({ id: Number(result.insertId) });
-      }
+      const result = await execute(
+        `INSERT INTO submissions (post_id, student_id, text_answer, file_path, link_url, attachments_json, submitted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [postId, studentId, textAnswer, filePath, linkUrl, attachmentsJson, now]
+      );
+      res.json({ id: Number(result.insertId) });
     } catch (colErr) {
+      if (colErr.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Esta tarea ya fue entregada. Solo se permite una entrega por tarea.' });
+      }
       if (colErr.code !== 'ER_BAD_FIELD_ERROR') {
         throw colErr;
       }
-      if (existing.length > 0) {
-        await execute(
-          'UPDATE submissions SET text_answer = ?, file_path = ?, submitted_at = ? WHERE id = ?',
-          [textAnswer, filePath, now, existing[0].id]
-        );
-        res.json({ id: Number(existing[0].id) });
-      } else {
-        const result = await execute(
-          `INSERT INTO submissions (post_id, student_id, text_answer, file_path, submitted_at)
-           VALUES (?, ?, ?, ?, ?)`,
-          [postId, studentId, textAnswer, filePath, now]
-        );
-        res.json({ id: Number(result.insertId) });
-      }
+      const result = await execute(
+        `INSERT INTO submissions (post_id, student_id, text_answer, file_path, submitted_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [postId, studentId, textAnswer, filePath, now]
+      );
+      res.json({ id: Number(result.insertId) });
     }
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
+
+async function deleteSubmission(req, res) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [owned] = await connection.query(
+      'SELECT id FROM submissions WHERE id = ? AND student_id = ? FOR UPDATE',
+      [req.params.submissionId, req.params.studentId]
+    );
+    if (owned.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Entrega no encontrada' });
+    }
+    await connection.query('DELETE FROM grades WHERE submission_id = ?', [req.params.submissionId]);
+    const [result] = await connection.query(
+      'DELETE FROM submissions WHERE id = ? AND student_id = ?',
+      [req.params.submissionId, req.params.studentId]
+    );
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Entrega no encontrada' });
+    }
+    await connection.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await connection.rollback();
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo eliminar la entrega' });
+  } finally {
+    connection.release();
+  }
+}
+
+app.delete('/api/submissions/:submissionId/students/:studentId', deleteSubmission);
+app.post('/api/submissions/:submissionId/students/:studentId/delete', deleteSubmission);
 
 app.get('/api/salons/:salonId/submissions', async (req, res) => {
   try {
@@ -732,10 +832,14 @@ app.get('/api/salons/:salonId/students/:studentId/submissions', async (req, res)
 app.put('/api/submissions/:submissionId/grade', async (req, res) => {
   try {
     const { score, feedback } = req.body;
+    const numericScore = Number(score);
+    if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > 10) {
+      return res.status(400).json({ error: 'La calificación debe ser de 0 a 10' });
+    }
     await execute(
       `INSERT INTO grades (submission_id, score, feedback) VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE score = VALUES(score), feedback = VALUES(feedback)`,
-      [req.params.submissionId, score, feedback || null]
+      [req.params.submissionId, numericScore, feedback || null]
     );
     res.json({ ok: true });
   } catch (e) {
