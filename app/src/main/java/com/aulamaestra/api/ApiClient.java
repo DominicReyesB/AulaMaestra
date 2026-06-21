@@ -2,11 +2,10 @@ package com.aulamaestra.api;
 
 import com.aulamaestra.BuildConfig;
 
-import com.aulamaestra.BuildConfig;
-
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
+import okhttp3.ConnectionPool;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -20,9 +19,11 @@ public final class ApiClient {
     public static AulaApiService api() {
         if (service == null) {
             OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
-                    .connectTimeout(20, TimeUnit.SECONDS)
-                    .readTimeout(45, TimeUnit.SECONDS)
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(25, TimeUnit.SECONDS)
                     .writeTimeout(45, TimeUnit.SECONDS);
+            clientBuilder.retryOnConnectionFailure(true)
+                    .connectionPool(new ConnectionPool(5, 5, TimeUnit.MINUTES));
             if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor log = new HttpLoggingInterceptor();
                 log.setLevel(HttpLoggingInterceptor.Level.BASIC);

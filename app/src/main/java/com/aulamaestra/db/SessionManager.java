@@ -59,4 +59,8 @@ public class SessionManager {
                 .remove(KEY_LAST_SALON_ID)
                 .apply();
     }
+
+    public void clearAll() {
+        prefs.edit().clear().apply();
+    }
 }

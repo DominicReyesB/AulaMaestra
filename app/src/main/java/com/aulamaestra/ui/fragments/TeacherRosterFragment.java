@@ -4,7 +4,9 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,12 +16,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.aulamaestra.R;
-import android.widget.Toast;
 
 import com.aulamaestra.db.AulaRepository;
 import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.Student;
 import com.aulamaestra.ui.SalonViewModel;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,11 +64,35 @@ public class TeacherRosterFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new RosterAdapter(new ArrayList<>());
+        rv.setHasFixedSize(true);
+        adapter = new RosterAdapter(new ArrayList<>(), this::confirmDelete);
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
+    }
+
+    private void confirmDelete(Student student) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.delete_student)
+                .setMessage(getString(R.string.delete_student_confirm, student.displayName))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.delete_student, (dialog, which) -> deleteStudent(student))
+                .show();
+    }
+
+    private void deleteStudent(Student student) {
+        repo.deleteStudentFromSalon(salonId, student.id, new RepoCallback<Void>() {
+            @Override
+            public void onSuccess(Void ignored) {
+                Toast.makeText(requireContext(), R.string.student_deleted, Toast.LENGTH_SHORT).show();
+                load();
+            }
+
+            @Override
+            public void onError(String message) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void load() {
@@ -87,10 +113,16 @@ public class TeacherRosterFragment extends Fragment {
     }
 
     private static class RosterAdapter extends RecyclerView.Adapter<RosterAdapter.VH> {
-        private final List<Student> data;
+        interface DeleteListener {
+            void onDelete(Student student);
+        }
 
-        RosterAdapter(List<Student> data) {
+        private final List<Student> data;
+        private final DeleteListener deleteListener;
+
+        RosterAdapter(List<Student> data, DeleteListener deleteListener) {
             this.data = data;
+            this.deleteListener = deleteListener;
         }
 
         void replace(List<Student> students) {
@@ -108,7 +140,9 @@ public class TeacherRosterFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
-            h.name.setText(data.get(position).displayName);
+            Student student = data.get(position);
+            h.name.setText(student.displayName);
+            h.delete.setOnClickListener(v -> deleteListener.onDelete(student));
         }
 
         @Override
@@ -118,10 +152,12 @@ public class TeacherRosterFragment extends Fragment {
 
         static class VH extends RecyclerView.ViewHolder {
             final TextView name;
+            final ImageButton delete;
 
             VH(@NonNull View itemView) {
                 super(itemView);
                 name = itemView.findViewById(R.id.textRosterName);
+                delete = itemView.findViewById(R.id.buttonDeleteStudent);
             }
         }
     }

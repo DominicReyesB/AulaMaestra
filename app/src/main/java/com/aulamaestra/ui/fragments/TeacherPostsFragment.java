@@ -1,10 +1,15 @@
 package com.aulamaestra.ui.fragments;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,12 +22,18 @@ import com.aulamaestra.R;
 import android.widget.Toast;
 
 import com.aulamaestra.db.AulaRepository;
+import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.Post;
 import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class TeacherPostsFragment extends Fragment {
     private static final String ARG_SALON = "salon_id";
@@ -66,7 +77,18 @@ public class TeacherPostsFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new PostAdapter(new ArrayList<>());
+        rv.setHasFixedSize(true);
+        adapter = new PostAdapter(new ArrayList<>(), new PostAdapter.Listener() {
+            @Override
+            public void onOpen(Post post) {
+                openAttachment(post.filePath);
+            }
+
+            @Override
+            public void onDelete(Post post) {
+                confirmDelete(post);
+            }
+        });
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.posts.observe(getViewLifecycleOwner(), all -> {
@@ -90,11 +112,47 @@ public class TeacherPostsFragment extends Fragment {
         });
     }
 
-    private static class PostAdapter extends RecyclerView.Adapter<PostAdapter.VH> {
-        private final List<Post> data;
+    private void openAttachment(String url) {
+        if (url == null || url.trim().isEmpty()) return;
+        String clean = url.trim();
+        if (!clean.matches("^[a-zA-Z][a-zA-Z0-9+.-]*:.*")) clean = "https://" + clean;
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(clean)));
+    }
 
-        PostAdapter(List<Post> data) {
+    private void confirmDelete(Post post) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.delete_post)
+                .setMessage(R.string.delete_post_confirm)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.delete_post, (d, w) -> repo.deletePost(post.id, new RepoCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void ignored) {
+                        new ViewModelProvider(requireActivity()).get(SalonViewModel.class).bump(repo);
+                        Toast.makeText(requireContext(), R.string.post_deleted, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                    }
+                }))
+                .show();
+    }
+
+    private static class PostAdapter extends RecyclerView.Adapter<PostAdapter.VH> {
+        interface Listener {
+            void onOpen(Post post);
+            void onDelete(Post post);
+        }
+
+        private final List<Post> data;
+        private final Listener listener;
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
+        PostAdapter(List<Post> data, Listener listener) {
             this.data = data;
+            this.listener = listener;
+            setHasStableIds(true);
         }
 
         void replace(List<Post> posts) {
@@ -116,13 +174,21 @@ public class TeacherPostsFragment extends Fragment {
             PostType.applyChipStyle(h.type, p.type);
             h.title.setText(p.title);
             h.body.setText(p.body == null ? "" : p.body);
+            Linkify.addLinks(h.body, Linkify.WEB_URLS);
+            h.body.setMovementMethod(LinkMovementMethod.getInstance());
             if (p.filePath != null && !p.filePath.isEmpty()) {
                 h.file.setVisibility(View.VISIBLE);
                 String label = p.filePath.contains("/") ? p.filePath.substring(p.filePath.lastIndexOf('/') + 1) : p.filePath;
                 h.file.setText("Archivo: " + label);
+                h.file.setOnClickListener(v -> listener.onOpen(p));
             } else {
                 h.file.setVisibility(View.GONE);
+                h.file.setOnClickListener(null);
             }
+            h.date.setText(h.itemView.getContext().getString(
+                    R.string.published_at, dateFormat.format(new Date(p.createdAt))));
+            h.delete.setVisibility(View.VISIBLE);
+            h.delete.setOnClickListener(v -> listener.onDelete(p));
         }
 
         @Override
@@ -130,11 +196,18 @@ public class TeacherPostsFragment extends Fragment {
             return data.size();
         }
 
+        @Override
+        public long getItemId(int position) {
+            return data.get(position).id;
+        }
+
         static class VH extends RecyclerView.ViewHolder {
             final TextView type;
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView date;
+            final ImageButton delete;
 
             VH(@NonNull View itemView) {
                 super(itemView);
@@ -142,6 +215,8 @@ public class TeacherPostsFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                date = itemView.findViewById(R.id.textPostDate);
+                delete = itemView.findViewById(R.id.buttonDeletePost);
             }
         }
     }

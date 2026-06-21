@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -29,6 +30,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -70,11 +73,11 @@ public class TeacherGradesFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rv.setHasFixedSize(true);
         adapter = new GradeAdapter(new ArrayList<>(), row -> showGradeDialog(row));
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
     }
 
     private void load() {
@@ -144,10 +147,14 @@ public class TeacherGradesFragment extends Fragment {
         if (row.feedback != null) {
             feedback.setText(row.feedback);
         }
-        new MaterialAlertDialogBuilder(requireContext())
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Calificar a " + row.studentName)
                 .setView(form)
-                .setPositiveButton(R.string.save, (d, w) -> {
+                .setPositiveButton(R.string.save, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                     String s = textOf(score);
                     if (TextUtils.isEmpty(s)) {
                         Toast.makeText(requireContext(), "Escribe una calificación", Toast.LENGTH_SHORT).show();
@@ -155,12 +162,19 @@ public class TeacherGradesFragment extends Fragment {
                     }
                     try {
                         double val = Double.parseDouble(s.replace(',', '.'));
+                        if (val < 0 || val > 10) {
+                            Toast.makeText(requireContext(), "La calificación debe ser de 0 a 10", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
                         repo.saveGrade(row.submissionId, val, textOf(feedback), new RepoCallback<Void>() {
                             @Override
                             public void onSuccess(Void data) {
-                                new ViewModelProvider(requireActivity()).get(SalonViewModel.class).bump();
+                                new ViewModelProvider(requireActivity())
+                                        .get(SalonViewModel.class)
+                                        .bump(repo);
+
                                 Toast.makeText(requireContext(), "Guardado", Toast.LENGTH_SHORT).show();
-                                load();
+                                dialog.dismiss();
                             }
 
                             @Override
@@ -171,9 +185,7 @@ public class TeacherGradesFragment extends Fragment {
                     } catch (NumberFormatException e) {
                         Toast.makeText(requireContext(), "Número inválido", Toast.LENGTH_SHORT).show();
                     }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                });
     }
 
     private static String textOf(TextInputEditText e) {
@@ -190,10 +202,12 @@ public class TeacherGradesFragment extends Fragment {
     private static class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.VH> {
         private final List<SubmissionRow> data;
         private final OnPick listener;
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
         GradeAdapter(List<SubmissionRow> data, OnPick listener) {
             this.data = data;
             this.listener = listener;
+            setHasStableIds(true);
         }
 
         void replace(List<SubmissionRow> rows) {
@@ -215,6 +229,8 @@ public class TeacherGradesFragment extends Fragment {
             h.title.setText(r.assignmentTitle);
             h.student.setText(r.studentName);
             h.answer.setText(SubmissionDisplay.format(r));
+            h.date.setText(h.itemView.getContext().getString(
+                    R.string.submitted_at, dateFormat.format(new Date(r.submittedAt))));
             if (r.score != null) {
                 h.grade.setVisibility(View.VISIBLE);
                 String fb = r.feedback == null ? "" : " · " + r.feedback;
@@ -231,11 +247,17 @@ public class TeacherGradesFragment extends Fragment {
             return data.size();
         }
 
+        @Override
+        public long getItemId(int position) {
+            return data.get(position).submissionId;
+        }
+
         static class VH extends RecyclerView.ViewHolder {
             final TextView title;
             final TextView student;
             final TextView answer;
             final TextView grade;
+            final TextView date;
 
             VH(@NonNull View itemView) {
                 super(itemView);
@@ -243,6 +265,7 @@ public class TeacherGradesFragment extends Fragment {
                 student = itemView.findViewById(R.id.textStudent);
                 answer = itemView.findViewById(R.id.textAnswer);
                 grade = itemView.findViewById(R.id.textGrade);
+                date = itemView.findViewById(R.id.textSubmissionDate);
             }
         }
     }

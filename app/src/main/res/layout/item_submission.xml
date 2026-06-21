@@ -35,6 +35,14 @@
             android:textColor="@color/on_surface_variant" />
 
         <TextView
+            android:id="@+id/textSubmissionDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/on_surface_variant" />
+
+        <TextView
             android:id="@+id/textGrade"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -43,5 +51,32 @@
             android:padding="@dimen/space_sm"
             android:textAppearance="?attr/textAppearanceLabelLarge"
             android:textColor="@color/chip_file_text" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonOpenSubmission"
+                style="@style/Widget.Aula.Button.Secondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/open_attachment"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/buttonDeleteSubmission"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/delete_submission"
+                android:padding="12dp"
+                android:src="@android:drawable/ic_menu_delete"
+                android:tint="@color/error"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,6 +1,10 @@
 package com.aulamaestra.ui.fragments;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,8 +25,12 @@ import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class StudentFeedFragment extends Fragment {
     private static final String ARG_SALON = "salon_id";
@@ -62,6 +70,7 @@ public class StudentFeedFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rv.setHasFixedSize(true);
         adapter = new FeedAdapter(new ArrayList<>());
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
@@ -87,9 +96,11 @@ public class StudentFeedFragment extends Fragment {
 
     private static class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.VH> {
         private final List<Post> data;
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
         FeedAdapter(List<Post> data) {
             this.data = data;
+            setHasStableIds(true);
         }
 
         void replace(List<Post> posts) {
@@ -111,12 +122,18 @@ public class StudentFeedFragment extends Fragment {
             PostType.applyChipStyle(h.type, p.type);
             h.title.setText(p.title);
             h.body.setText(p.body == null ? "" : p.body);
+            Linkify.addLinks(h.body, Linkify.WEB_URLS);
+            h.body.setMovementMethod(LinkMovementMethod.getInstance());
             if (p.filePath != null && !p.filePath.isEmpty()) {
                 h.file.setVisibility(View.VISIBLE);
                 h.file.setText("Archivo: " + new File(p.filePath).getName());
+                h.file.setOnClickListener(v -> openUrl(v, p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
+                h.file.setOnClickListener(null);
             }
+            h.date.setText(h.itemView.getContext().getString(
+                    R.string.published_at, dateFormat.format(new Date(p.createdAt))));
         }
 
         @Override
@@ -124,11 +141,17 @@ public class StudentFeedFragment extends Fragment {
             return data.size();
         }
 
+        @Override
+        public long getItemId(int position) {
+            return data.get(position).id;
+        }
+
         static class VH extends RecyclerView.ViewHolder {
             final TextView type;
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView date;
 
             VH(@NonNull View itemView) {
                 super(itemView);
@@ -136,7 +159,19 @@ public class StudentFeedFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                date = itemView.findViewById(R.id.textPostDate);
             }
+        }
+
+        private static void openUrl(View view, String url) {
+            if (url == null || url.trim().isEmpty()) {
+                return;
+            }
+            String clean = url.trim();
+            if (!Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:").matcher(clean).find()) {
+                clean = "https://" + clean;
+            }
+            view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(clean)));
         }
     }
 }

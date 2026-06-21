@@ -64,6 +64,7 @@ public class TeacherMessagingFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rv.setHasFixedSize(true);
         adapter = new MsgStudentAdapter(new ArrayList<>(), (student) -> {
             Intent i = new Intent(requireContext(), MessageThreadActivity.class);
             i.putExtra(MessageThreadActivity.EXTRA_SALON_ID, salonId);
@@ -74,13 +75,6 @@ public class TeacherMessagingFragment extends Fragment {
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.contentVersion.observe(getViewLifecycleOwner(), v -> load());
-        load();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        load();
     }
 
     private void load() {
@@ -111,6 +105,7 @@ public class TeacherMessagingFragment extends Fragment {
         MsgStudentAdapter(List<Student> data, OpenChat openChat) {
             this.data = data;
             this.openChat = openChat;
+            setHasStableIds(true);
         }
 
         void replace(List<Student> students) {
@@ -140,6 +135,11 @@ public class TeacherMessagingFragment extends Fragment {
         @Override
         public int getItemCount() {
             return data.size();
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return data.get(position).id;
         }
 
         static class VH extends RecyclerView.ViewHolder {

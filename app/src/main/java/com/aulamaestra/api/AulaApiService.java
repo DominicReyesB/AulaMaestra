@@ -25,6 +25,7 @@ import java.util.List;
 import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -76,14 +77,36 @@ public interface AulaApiService {
     @GET("api/salons/{salonId}/students")
     Call<List<StudentDto>> listStudents(@Path("salonId") long salonId);
 
+    @DELETE("api/salons/{salonId}/students/{studentId}")
+    Call<OkResponse> deleteStudent(
+            @Path("salonId") long salonId, @Path("studentId") long studentId);
+
+    @POST("api/salons/{salonId}/students/{studentId}/delete")
+    Call<OkResponse> deleteStudentCompatible(
+            @Path("salonId") long salonId, @Path("studentId") long studentId);
+
     @GET("api/salons/{salonId}/posts")
     Call<List<PostDto>> listPosts(@Path("salonId") long salonId, @Query("type") Integer type);
 
     @POST("api/salons/{salonId}/posts")
     Call<IdResponse> createPost(@Path("salonId") long salonId, @Body PostCreateRequest body);
 
+    @DELETE("api/posts/{postId}")
+    Call<OkResponse> deletePost(@Path("postId") long postId);
+
+    @POST("api/posts/{postId}/delete")
+    Call<OkResponse> deletePostCompatible(@Path("postId") long postId);
+
     @POST("api/posts/{postId}/submissions")
     Call<IdResponse> submit(@Path("postId") long postId, @Body SubmissionCreateRequest body);
+
+    @DELETE("api/submissions/{submissionId}/students/{studentId}")
+    Call<OkResponse> deleteSubmission(
+            @Path("submissionId") long submissionId, @Path("studentId") long studentId);
+
+    @POST("api/submissions/{submissionId}/students/{studentId}/delete")
+    Call<OkResponse> deleteSubmissionCompatible(
+            @Path("submissionId") long submissionId, @Path("studentId") long studentId);
 
     @GET("api/salons/{salonId}/submissions")
     Call<List<SubmissionDto>> listSubmissionsForSalon(@Path("salonId") long salonId);

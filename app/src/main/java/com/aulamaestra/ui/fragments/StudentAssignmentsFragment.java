@@ -1,8 +1,11 @@
 package com.aulamaestra.ui.fragments;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,8 +35,14 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class StudentAssignmentsFragment extends Fragment {
     private static final String ARG_SALON = "salon_id";
@@ -49,6 +58,8 @@ public class StudentAssignmentsFragment extends Fragment {
     private ActivityResultLauncher<String> pickFile;
     private String pendingPickKind;
     private final List<PendingAttachment> pendingAttachments = new ArrayList<>();
+    private final Set<Long> submittedPostIds = new HashSet<>();
+    private final List<Post> allAssignments = new ArrayList<>();
     private TextView attachmentsLabel;
 
     public static StudentAssignmentsFragment newInstance(long salonId, long studentId) {
@@ -86,10 +97,12 @@ public class StudentAssignmentsFragment extends Fragment {
         RecyclerView rv = view.findViewById(R.id.recycler);
         empty = view.findViewById(R.id.textEmpty);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rv.setHasFixedSize(true);
         adapter = new AssignmentsAdapter(new ArrayList<>(), this::showSubmitDialog);
         rv.setAdapter(adapter);
         SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
         vm.posts.observe(getViewLifecycleOwner(), posts -> applyPosts(posts == null ? new ArrayList<>() : posts));
+        vm.contentVersion.observe(getViewLifecycleOwner(), v -> loadSubmittedAssignments());
         vm.postsError.observe(getViewLifecycleOwner(), message -> {
             if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
@@ -97,15 +110,45 @@ public class StudentAssignmentsFragment extends Fragment {
         });
     }
 
+    private void loadSubmittedAssignments() {
+        repo.listSubmissionsForStudent(salonId, studentId, new RepoCallback<List<com.aulamaestra.model.SubmissionRow>>() {
+            @Override
+            public void onSuccess(List<com.aulamaestra.model.SubmissionRow> rows) {
+                submittedPostIds.clear();
+                for (com.aulamaestra.model.SubmissionRow row : rows) {
+                    submittedPostIds.add(row.postId);
+                }
+                if (adapter != null) {
+                    adapter.setSubmittedPostIds(submittedPostIds);
+                }
+                renderPending();
+            }
+
+            @Override
+            public void onError(String message) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void applyPosts(List<Post> posts) {
-        List<Post> assignments = new ArrayList<>();
+        allAssignments.clear();
         for (Post p : posts) {
             if (p.type == PostType.ASSIGNMENT) {
-                assignments.add(p);
+                allAssignments.add(p);
             }
         }
-        adapter.replace(assignments);
-        empty.setVisibility(assignments.isEmpty() ? View.VISIBLE : View.GONE);
+        renderPending();
+    }
+
+    private void renderPending() {
+        if (adapter == null || empty == null) return;
+        List<Post> pending = new ArrayList<>();
+        for (Post post : allAssignments) {
+            if (!submittedPostIds.contains(post.id)) pending.add(post);
+        }
+        adapter.replace(pending);
+        empty.setVisibility(pending.isEmpty() ? View.VISIBLE : View.GONE);
         empty.setText(R.string.no_assignments);
     }
 
@@ -142,6 +185,10 @@ public class StudentAssignmentsFragment extends Fragment {
     }
 
     private void showSubmitDialog(Post post) {
+        if (submittedPostIds.contains(post.id)) {
+            Toast.makeText(requireContext(), R.string.submit_already_sent, Toast.LENGTH_SHORT).show();
+            return;
+        }
         pendingAttachments.clear();
         View form = getLayoutInflater().inflate(R.layout.dialog_submit, null);
         TextInputEditText inputAnswer = form.findViewById(R.id.inputAnswer);
@@ -227,6 +274,11 @@ public class StudentAssignmentsFragment extends Fragment {
         repo.upsertSubmission(post.id, studentId, text, firstFile, link, json, new RepoCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
+                submittedPostIds.add(post.id);
+                if (adapter != null) {
+                    adapter.setSubmittedPostIds(submittedPostIds);
+                }
+                renderPending();
                 SalonViewModel vm = new ViewModelProvider(requireActivity()).get(SalonViewModel.class);
                 vm.bump(repo);
                 Toast.makeText(requireContext(), R.string.submit_ok, Toast.LENGTH_SHORT).show();
@@ -266,15 +318,24 @@ public class StudentAssignmentsFragment extends Fragment {
     private static class AssignmentsAdapter extends RecyclerView.Adapter<AssignmentsAdapter.VH> {
         private final List<Post> data;
         private final SubmitListener listener;
+        private final Set<Long> submittedPostIds = new HashSet<>();
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
         AssignmentsAdapter(List<Post> data, SubmitListener listener) {
             this.data = data;
             this.listener = listener;
+            setHasStableIds(true);
         }
 
         void replace(List<Post> posts) {
             data.clear();
             data.addAll(posts);
+            notifyDataSetChanged();
+        }
+
+        void setSubmittedPostIds(Set<Long> ids) {
+            submittedPostIds.clear();
+            submittedPostIds.addAll(ids);
             notifyDataSetChanged();
         }
 
@@ -292,14 +353,31 @@ public class StudentAssignmentsFragment extends Fragment {
             PostType.applyChipStyle(h.type, p.type);
             h.title.setText(p.title);
             h.body.setText(p.body == null ? "" : p.body);
+            Linkify.addLinks(h.body, Linkify.WEB_URLS);
+            h.body.setMovementMethod(LinkMovementMethod.getInstance());
             if (p.filePath != null && !p.filePath.isEmpty()) {
                 h.file.setVisibility(View.VISIBLE);
                 h.file.setText("Material: " + new File(p.filePath).getName());
+                h.file.setOnClickListener(v -> openUrl(v, p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
+                h.file.setOnClickListener(null);
             }
+            h.date.setText(h.itemView.getContext().getString(
+                    R.string.published_at, dateFormat.format(new Date(p.createdAt))));
             h.submit.setVisibility(View.VISIBLE);
-            h.submit.setOnClickListener(v -> listener.onSubmit(p));
+            boolean submitted = submittedPostIds.contains(p.id);
+            h.submit.setEnabled(!submitted);
+            if (h.submit instanceof TextView) {
+                ((TextView) h.submit).setText(submitted ? R.string.submit_already_sent_short : R.string.submit);
+            }
+            h.submit.setOnClickListener(v -> {
+                if (submittedPostIds.contains(p.id)) {
+                    Toast.makeText(v.getContext(), R.string.submit_already_sent, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                listener.onSubmit(p);
+            });
         }
 
         @Override
@@ -307,11 +385,17 @@ public class StudentAssignmentsFragment extends Fragment {
             return data.size();
         }
 
+        @Override
+        public long getItemId(int position) {
+            return data.get(position).id;
+        }
+
         static class VH extends RecyclerView.ViewHolder {
             final TextView type;
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView date;
             final View submit;
 
             VH(@NonNull View itemView) {
@@ -320,8 +404,20 @@ public class StudentAssignmentsFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                date = itemView.findViewById(R.id.textPostDate);
                 submit = itemView.findViewById(R.id.btnSubmitAssignment);
             }
+        }
+
+        private static void openUrl(View view, String url) {
+            if (url == null || url.trim().isEmpty()) {
+                return;
+            }
+            String clean = url.trim();
+            if (!Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:").matcher(clean).find()) {
+                clean = "https://" + clean;
+            }
+            view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(clean)));
         }
     }
 }
