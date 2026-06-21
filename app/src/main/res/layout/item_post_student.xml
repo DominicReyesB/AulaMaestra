@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     style="@style/Widget.Aula.Card.Outlined"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -33,13 +34,13 @@
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="@color/on_surface_variant" />
 
-        <TextView
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/textPostFile"
+            style="@style/Widget.Aula.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_sm"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:textColor="@color/primary_dark"
+            app:icon="@android:drawable/ic_menu_view"
             android:visibility="gone" />
 
         <TextView

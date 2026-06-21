@@ -1,7 +1,9 @@
 package com.aulamaestra.ui;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,7 +23,10 @@ public final class IoUtils {
             //noinspection ResultOfMethodCallIgnored
             dir.mkdirs();
         }
-        File out = new File(dir, fileName);
+        String originalName = displayName(context, uri);
+        String safeOriginal = originalName == null ? "" : originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        String finalName = safeOriginal.isEmpty() ? fileName : fileName + "-" + safeOriginal;
+        File out = new File(dir, finalName);
         try (InputStream in = context.getContentResolver().openInputStream(uri);
              OutputStream outStream = new FileOutputStream(out)) {
             if (in == null) {
@@ -36,5 +41,17 @@ public final class IoUtils {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String displayName(Context context, Uri uri) {
+        try (Cursor cursor = context.getContentResolver().query(
+                uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) return cursor.getString(index);
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 }

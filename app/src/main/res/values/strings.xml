@@ -82,10 +82,17 @@
     <string name="submission_deleted">Entrega eliminada</string>
     <string name="graded_submission_locked">Las entregas calificadas ya no se pueden eliminar.</string>
     <string name="open_attachment">Abrir adjunto</string>
+    <string name="open_named_attachment">Abrir archivo: %1$s</string>
+    <string name="cannot_open_attachment">No hay una aplicación disponible para abrir este archivo.</string>
     <string name="published_at">Publicado: %1$s</string>
     <string name="submitted_at">Entregado: %1$s</string>
     <string name="open_thread">Abrir chat</string>
     <string name="tab_classroom">Aula</string>
     <string name="tab_my_work">Mis entregas</string>
     <string name="chat_teacher">Mensajes con la maestra</string>
+    <string name="ai_help_option">Preguntar a la IA</string>
+    <string name="ai_help_title">Asistente de Aula Maestra</string>
+    <string name="ai_help_question_hint">Escribe cualquier duda</string>
+    <string name="ai_help_write_question">Escribe tu pregunta</string>
+    <string name="ask_ai">Preguntar</string>
 </resources>

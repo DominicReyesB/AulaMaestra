@@ -27,6 +27,7 @@ import com.aulamaestra.db.RepoCallback;
 import com.aulamaestra.model.Post;
 import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
+import com.aulamaestra.ui.ExternalLinkUtils;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
@@ -122,10 +123,7 @@ public class TeacherPostsFragment extends Fragment {
     }
 
     private void openAttachment(String url) {
-        if (url == null || url.trim().isEmpty()) return;
-        String clean = url.trim();
-        if (!clean.matches("^[a-zA-Z][a-zA-Z0-9+.-]*:.*")) clean = "https://" + clean;
-        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(clean)));
+        ExternalLinkUtils.open(requireContext(), url);
     }
 
     private void confirmDelete(Post post) {
@@ -188,11 +186,13 @@ public class TeacherPostsFragment extends Fragment {
             if (p.filePath != null && !p.filePath.isEmpty()) {
                 h.file.setVisibility(View.VISIBLE);
                 String label = p.filePath.contains("/") ? p.filePath.substring(p.filePath.lastIndexOf('/') + 1) : p.filePath;
-                h.file.setText("Archivo: " + label);
+                h.file.setText(h.itemView.getContext().getString(R.string.open_named_attachment, label));
                 h.file.setOnClickListener(v -> listener.onOpen(p));
+                h.itemView.setOnClickListener(v -> listener.onOpen(p));
             } else {
                 h.file.setVisibility(View.GONE);
                 h.file.setOnClickListener(null);
+                h.itemView.setOnClickListener(null);
             }
             h.date.setText(h.itemView.getContext().getString(
                     R.string.published_at, dateFormat.format(new Date(p.createdAt))));

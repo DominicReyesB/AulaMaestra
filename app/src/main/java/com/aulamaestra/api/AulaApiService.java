@@ -5,6 +5,9 @@ import com.aulamaestra.api.dto.AuthRequest;
 import com.aulamaestra.api.dto.StudentRegisterRequest;
 import com.aulamaestra.api.dto.EnrollRequest;
 import com.aulamaestra.api.dto.GradeRequest;
+import com.aulamaestra.api.dto.HelpAnswerResponse;
+import com.aulamaestra.api.dto.HelpQuestionRequest;
+import com.aulamaestra.api.dto.HelpStatusResponse;
 import com.aulamaestra.api.dto.IdResponse;
 import com.aulamaestra.api.dto.MessageRequest;
 import com.aulamaestra.api.dto.MessageDto;
@@ -35,6 +38,12 @@ import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 public interface AulaApiService {
+    @GET("api/help/status")
+    Call<HelpStatusResponse> helpStatus();
+
+    @POST("api/help/ask")
+    Call<HelpAnswerResponse> askHelp(@Body HelpQuestionRequest body);
+
     @POST("api/teachers/register")
     Call<IdResponse> registerTeacher(@Body AuthRequest body);
 

@@ -24,6 +24,7 @@ import com.aulamaestra.db.AulaRepository;
 import com.aulamaestra.model.Post;
 import com.aulamaestra.model.PostType;
 import com.aulamaestra.ui.SalonViewModel;
+import com.aulamaestra.ui.ExternalLinkUtils;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -137,11 +138,14 @@ public class StudentFeedFragment extends Fragment {
             h.body.setMovementMethod(LinkMovementMethod.getInstance());
             if (p.filePath != null && !p.filePath.isEmpty()) {
                 h.file.setVisibility(View.VISIBLE);
-                h.file.setText("Archivo: " + new File(p.filePath).getName());
-                h.file.setOnClickListener(v -> openUrl(v, p.filePath));
+                String name = new File(p.filePath).getName();
+                h.file.setText(h.itemView.getContext().getString(R.string.open_named_attachment, name));
+                h.file.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
+                h.itemView.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
                 h.file.setOnClickListener(null);
+                h.itemView.setOnClickListener(null);
             }
             h.date.setText(h.itemView.getContext().getString(
                     R.string.published_at, dateFormat.format(new Date(p.createdAt))));
@@ -174,15 +178,5 @@ public class StudentFeedFragment extends Fragment {
             }
         }
 
-        private static void openUrl(View view, String url) {
-            if (url == null || url.trim().isEmpty()) {
-                return;
-            }
-            String clean = url.trim();
-            if (!Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:").matcher(clean).find()) {
-                clean = "https://" + clean;
-            }
-            view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(clean)));
-        }
     }
 }

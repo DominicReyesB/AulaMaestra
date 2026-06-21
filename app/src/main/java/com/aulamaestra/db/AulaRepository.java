@@ -10,6 +10,9 @@ import com.aulamaestra.api.dto.AuthRequest;
 import com.aulamaestra.api.dto.StudentRegisterRequest;
 import com.aulamaestra.api.dto.EnrollRequest;
 import com.aulamaestra.api.dto.GradeRequest;
+import com.aulamaestra.api.dto.HelpAnswerResponse;
+import com.aulamaestra.api.dto.HelpQuestionRequest;
+import com.aulamaestra.api.dto.HelpStatusResponse;
 import com.aulamaestra.api.dto.IdResponse;
 import com.aulamaestra.api.dto.MessageDto;
 import com.aulamaestra.api.dto.MessageRequest;
@@ -211,6 +214,34 @@ public class AulaRepository {
 
     public void registerTeacher(String username, String password, RepoCallback<Long> cb) {
         enqueueId(api.registerTeacher(new AuthRequest(username, password)), cb);
+    }
+
+    public void isAiHelpAvailable(RepoCallback<Boolean> cb) {
+        enqueue(api.helpStatus(), new RepoCallback<HelpStatusResponse>() {
+            @Override
+            public void onSuccess(HelpStatusResponse data) {
+                cb.onSuccess(data.available);
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
+        });
+    }
+
+    public void askAiHelp(String question, RepoCallback<String> cb) {
+        enqueue(api.askHelp(new HelpQuestionRequest(question)), new RepoCallback<HelpAnswerResponse>() {
+            @Override
+            public void onSuccess(HelpAnswerResponse data) {
+                cb.onSuccess(data.answer == null ? "" : data.answer);
+            }
+
+            @Override
+            public void onError(String message) {
+                cb.onError(message);
+            }
+        });
     }
 
     public void loginTeacher(String username, String password, RepoCallback<Long> cb) {
