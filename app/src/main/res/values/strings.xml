@@ -45,6 +45,9 @@
     <string name="type_assignment">Tarea</string>
     <string name="type_file">Archivo</string>
     <string name="attach_file">Adjuntar archivo</string>
+    <string name="post_link_hint">Enlace opcional (Drive, YouTube, etc.)</string>
+    <string name="open_post_link">Abrir enlace adjunto</string>
+    <string name="invalid_link">Escribe un enlace válido.</string>
     <string name="save">Guardar</string>
     <string name="publishing">Publicando…</string>
     <string name="preparing_attachment">Preparando archivo…</string>

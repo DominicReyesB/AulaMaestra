@@ -59,6 +59,7 @@ async function migrateDb() {
     'ALTER TABLE students ADD COLUMN password VARCHAR(255) NULL',
     'ALTER TABLE submissions ADD COLUMN link_url TEXT NULL',
     'ALTER TABLE submissions ADD COLUMN attachments_json TEXT NULL',
+    'ALTER TABLE posts ADD COLUMN link_url TEXT NULL',
   ];
   for (const sql of alters) {
     try {

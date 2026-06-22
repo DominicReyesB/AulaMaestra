@@ -84,8 +84,8 @@ public class TeacherPostsFragment extends Fragment {
         rv.setHasFixedSize(true);
         adapter = new PostAdapter(new ArrayList<>(), new PostAdapter.Listener() {
             @Override
-            public void onOpen(Post post) {
-                openAttachment(post.filePath);
+            public void onOpen(String value) {
+                openAttachment(value);
             }
 
             @Override
@@ -153,7 +153,7 @@ public class TeacherPostsFragment extends Fragment {
 
     private static class PostAdapter extends RecyclerView.Adapter<PostAdapter.VH> {
         interface Listener {
-            void onOpen(Post post);
+            void onOpen(String value);
             void onDelete(Post post);
         }
 
@@ -192,13 +192,22 @@ public class TeacherPostsFragment extends Fragment {
                 h.file.setVisibility(View.VISIBLE);
                 String label = p.filePath.contains("/") ? p.filePath.substring(p.filePath.lastIndexOf('/') + 1) : p.filePath;
                 h.file.setText(h.itemView.getContext().getString(R.string.open_named_attachment, label));
-                h.file.setOnClickListener(v -> listener.onOpen(p));
-                h.itemView.setOnClickListener(v -> listener.onOpen(p));
+                h.file.setOnClickListener(v -> listener.onOpen(p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
                 h.file.setOnClickListener(null);
-                h.itemView.setOnClickListener(null);
             }
+            if (p.linkUrl != null && !p.linkUrl.isEmpty()) {
+                h.link.setVisibility(View.VISIBLE);
+                h.link.setOnClickListener(v -> listener.onOpen(p.linkUrl));
+            } else {
+                h.link.setVisibility(View.GONE);
+                h.link.setOnClickListener(null);
+            }
+            String primaryAttachment = p.filePath != null && !p.filePath.isEmpty()
+                    ? p.filePath : p.linkUrl;
+            h.itemView.setOnClickListener(primaryAttachment == null || primaryAttachment.isEmpty()
+                    ? null : v -> listener.onOpen(primaryAttachment));
             h.date.setText(h.itemView.getContext().getString(
                     R.string.published_at, dateFormat.format(new Date(p.createdAt))));
             h.delete.setVisibility(View.VISIBLE);
@@ -220,6 +229,7 @@ public class TeacherPostsFragment extends Fragment {
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView link;
             final TextView date;
             final ImageButton delete;
 
@@ -229,6 +239,7 @@ public class TeacherPostsFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                link = itemView.findViewById(R.id.textPostLink);
                 date = itemView.findViewById(R.id.textPostDate);
                 delete = itemView.findViewById(R.id.buttonDeletePost);
             }

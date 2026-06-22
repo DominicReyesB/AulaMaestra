@@ -6,5 +6,6 @@ public class PostDto {
     public String title;
     public String body;
     public String filePath;
+    public String linkUrl;
     public long createdAt;
 }

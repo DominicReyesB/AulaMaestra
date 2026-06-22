@@ -199,7 +199,7 @@ public class AulaRepository {
     }
 
     private static Post mapPost(PostDto d) {
-        return new Post(d.id, d.type, d.title, d.body, d.filePath, d.createdAt);
+        return new Post(d.id, d.type, d.title, d.body, d.filePath, d.linkUrl, d.createdAt);
     }
 
     private static SubmissionRow mapSubmission(SubmissionDto d) {
@@ -469,8 +469,9 @@ public class AulaRepository {
     }
 
     public void insertPost(long salonId, int postType, String title, String body, String filePath,
-                           RepoCallback<Long> cb) {
-        enqueueId(api.createPost(salonId, new PostCreateRequest(postType, title, body, filePath)), cb);
+                           String linkUrl, RepoCallback<Long> cb) {
+        enqueueId(api.createPost(
+                salonId, new PostCreateRequest(postType, title, body, filePath, linkUrl)), cb);
     }
 
     public void deletePost(long postId, RepoCallback<Void> cb) {

@@ -6,7 +6,9 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class SubmissionAttachments {
     private static final Gson GSON = new Gson();
@@ -19,7 +21,8 @@ public final class SubmissionAttachments {
         if (list == null || list.isEmpty()) {
             return null;
         }
-        return GSON.toJson(list);
+        List<SubmissionAttachment> unique = deduplicate(list);
+        return unique.isEmpty() ? null : GSON.toJson(unique);
     }
 
     public static List<SubmissionAttachment> fromJson(String json) {
@@ -28,10 +31,29 @@ public final class SubmissionAttachments {
         }
         try {
             List<SubmissionAttachment> parsed = GSON.fromJson(json, LIST_TYPE);
-            return parsed != null ? parsed : new ArrayList<>();
+            return parsed != null ? deduplicate(parsed) : new ArrayList<>();
         } catch (Exception e) {
             return new ArrayList<>();
         }
+    }
+
+    public static List<SubmissionAttachment> deduplicate(List<SubmissionAttachment> list) {
+        List<SubmissionAttachment> unique = new ArrayList<>();
+        Set<String> seenUrls = new HashSet<>();
+        if (list == null) {
+            return unique;
+        }
+        for (SubmissionAttachment attachment : list) {
+            if (attachment == null || attachment.url == null || attachment.url.trim().isEmpty()) {
+                continue;
+            }
+            String cleanUrl = attachment.url.trim();
+            if (seenUrls.add(cleanUrl)) {
+                attachment.url = cleanUrl;
+                unique.add(attachment);
+            }
+        }
+        return unique;
     }
 
     public static String describeForDisplay(SubmissionAttachment a) {

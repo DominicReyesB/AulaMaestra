@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_DOWNLOAD_URL =
   process.env.APP_DOWNLOAD_URL ||
-  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.4.0/AulaMaestra-v1.4.0.apk';
+  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.5.0/AulaMaestra-v1.5.0.apk';
 
 app.set('trust proxy', 1);
 app.use(cors());
@@ -26,6 +26,42 @@ function publicBase(req) {
 
 function cleanFileName(value) {
   return path.basename(String(value || 'archivo')).replace(/[\r\n]/g, '_').slice(0, 255) || 'archivo';
+}
+
+function normalizeWebUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const clean = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(clean);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function deduplicateAttachmentsJson(value, primaryLink) {
+  if (!value) return null;
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) return null;
+    const seen = new Set(primaryLink ? [primaryLink.trim()] : []);
+    const unique = [];
+    for (const attachment of parsed) {
+      if (!attachment || typeof attachment.url !== 'string') continue;
+      const url = attachment.url.trim();
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      unique.push({
+        kind: String(attachment.kind || 'file').slice(0, 20),
+        url,
+        name: attachment.name == null ? null : String(attachment.name).slice(0, 255),
+      });
+    }
+    return unique.length > 0 ? JSON.stringify(unique) : null;
+  } catch (_e) {
+    return null;
+  }
 }
 
 async function upgradePassword(table, id, password, stored) {
@@ -50,6 +86,7 @@ function postRow(r) {
     title: r.title,
     body: r.body,
     filePath: r.file_path,
+    linkUrl: r.link_url,
     createdAt: Number(r.created_at),
   };
 }
@@ -761,11 +798,15 @@ app.get('/api/salons/:salonId/posts', async (req, res) => {
 
 app.post('/api/salons/:salonId/posts', async (req, res) => {
   try {
-    const { postType, title, body, filePath } = req.body;
+    const { postType, title, body, filePath, linkUrl } = req.body;
+    const normalizedLink = normalizeWebUrl(linkUrl);
+    if (linkUrl && !normalizedLink) {
+      return res.status(400).json({ error: 'El enlace adjunto no es válido' });
+    }
     const result = await execute(
-      `INSERT INTO posts (salon_id, post_type, title, body, file_path, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.params.salonId, postType, title, body || null, filePath || null, Date.now()]
+      `INSERT INTO posts (salon_id, post_type, title, body, file_path, link_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.params.salonId, postType, title, body || null, filePath || null, normalizedLink, Date.now()]
     );
     res.json({ id: Number(result.insertId) });
   } catch (e) {
@@ -796,8 +837,11 @@ app.post('/api/posts/:postId/submissions', async (req, res) => {
     const studentId = Number(req.body.studentId);
     const textAnswer = req.body.textAnswer || null;
     const filePath = req.body.filePath || null;
-    const linkUrl = req.body.linkUrl || null;
-    const attachmentsJson = req.body.attachmentsJson || null;
+    const linkUrl = normalizeWebUrl(req.body.linkUrl);
+    if (req.body.linkUrl && !linkUrl) {
+      return res.status(400).json({ error: 'El enlace adjunto no es válido' });
+    }
+    const attachmentsJson = deduplicateAttachmentsJson(req.body.attachmentsJson, linkUrl);
     const now = Date.now();
     const existing = await query(
       'SELECT id FROM submissions WHERE post_id = ? AND student_id = ?',

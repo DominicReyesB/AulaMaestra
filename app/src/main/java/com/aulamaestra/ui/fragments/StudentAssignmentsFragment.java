@@ -3,7 +3,6 @@ package com.aulamaestra.ui.fragments;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.view.LayoutInflater;
@@ -44,7 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 public class StudentAssignmentsFragment extends Fragment {
     private static final String ARG_SALON = "salon_id";
@@ -60,6 +58,7 @@ public class StudentAssignmentsFragment extends Fragment {
     private ActivityResultLauncher<String> pickFile;
     private String pendingPickKind;
     private final List<PendingAttachment> pendingAttachments = new ArrayList<>();
+    private final Set<String> pendingAttachmentSources = new HashSet<>();
     private final Set<Long> submittedPostIds = new HashSet<>();
     private final List<Post> allAssignments = new ArrayList<>();
     private TextView attachmentsLabel;
@@ -181,6 +180,10 @@ public class StudentAssignmentsFragment extends Fragment {
         String name = "adj-" + System.currentTimeMillis();
         String kind = pendingPickKind;
         pendingPickKind = null;
+        String source = uri.normalizeScheme().toString();
+        if (!pendingAttachmentSources.add(source)) {
+            return;
+        }
         pendingCopies++;
         if (attachmentsLabel != null) {
             attachmentsLabel.setText(R.string.preparing_attachment);
@@ -191,8 +194,9 @@ public class StudentAssignmentsFragment extends Fragment {
                 return;
             }
             if (path == null) {
+                pendingAttachmentSources.remove(source);
                 Toast.makeText(requireContext(), "No se pudo leer el archivo", Toast.LENGTH_SHORT).show();
-            } else {
+            } else if (pendingAttachmentSources.contains(source)) {
                 pendingAttachments.add(new PendingAttachment(kind, path, new File(path).getName()));
             }
             refreshAttachmentLabel();
@@ -225,6 +229,7 @@ public class StudentAssignmentsFragment extends Fragment {
             return;
         }
         pendingAttachments.clear();
+        pendingAttachmentSources.clear();
         View form = getLayoutInflater().inflate(R.layout.dialog_submit, null);
         TextInputEditText inputAnswer = form.findViewById(R.id.inputAnswer);
         TextInputEditText inputLink = form.findViewById(R.id.inputLink);
@@ -232,6 +237,7 @@ public class StudentAssignmentsFragment extends Fragment {
         clearAttachments = form.findViewById(R.id.btnClearAttachments);
         clearAttachments.setOnClickListener(v -> {
             pendingAttachments.clear();
+            pendingAttachmentSources.clear();
             refreshAttachmentLabel();
         });
         refreshAttachmentLabel();
@@ -262,7 +268,12 @@ public class StudentAssignmentsFragment extends Fragment {
                 return;
             }
             String text = textOf(inputAnswer);
-            String link = textOf(inputLink);
+            String rawLink = textOf(inputLink);
+            String link = rawLink.isEmpty() ? "" : ExternalLinkUtils.normalizeWebUrl(rawLink);
+            if (!rawLink.isEmpty() && link == null) {
+                Toast.makeText(requireContext(), R.string.invalid_link, Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (text.isEmpty() && link.isEmpty() && pendingAttachments.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.submit_need_content, Toast.LENGTH_SHORT).show();
                 return;
@@ -303,13 +314,10 @@ public class StudentAssignmentsFragment extends Fragment {
 
     private void saveSubmission(Post post, String text, String link,
                                 List<SubmissionAttachment> attachments, AlertDialog d) {
-        List<SubmissionAttachment> all = new ArrayList<>(attachments);
-        if (!TextUtils.isEmpty(link)) {
-            all.add(new SubmissionAttachment("link", link.trim(), link.trim()));
-        }
-        String json = SubmissionAttachments.toJson(all.isEmpty() ? null : all);
+        List<SubmissionAttachment> uniqueAttachments = SubmissionAttachments.deduplicate(attachments);
+        String json = SubmissionAttachments.toJson(uniqueAttachments);
         String firstFile = null;
-        for (SubmissionAttachment a : attachments) {
+        for (SubmissionAttachment a : uniqueAttachments) {
             if (!"link".equals(a.kind)) {
                 firstFile = a.url;
                 break;
@@ -404,12 +412,21 @@ public class StudentAssignmentsFragment extends Fragment {
                 String name = new File(p.filePath).getName();
                 h.file.setText(h.itemView.getContext().getString(R.string.open_named_attachment, name));
                 h.file.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
-                h.itemView.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
                 h.file.setOnClickListener(null);
-                h.itemView.setOnClickListener(null);
             }
+            if (p.linkUrl != null && !p.linkUrl.isEmpty()) {
+                h.link.setVisibility(View.VISIBLE);
+                h.link.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.linkUrl));
+            } else {
+                h.link.setVisibility(View.GONE);
+                h.link.setOnClickListener(null);
+            }
+            String primaryAttachment = p.filePath != null && !p.filePath.isEmpty()
+                    ? p.filePath : p.linkUrl;
+            h.itemView.setOnClickListener(primaryAttachment == null || primaryAttachment.isEmpty()
+                    ? null : v -> ExternalLinkUtils.open(v.getContext(), primaryAttachment));
             h.date.setText(h.itemView.getContext().getString(
                     R.string.published_at, dateFormat.format(new Date(p.createdAt))));
             h.submit.setVisibility(View.VISIBLE);
@@ -442,6 +459,7 @@ public class StudentAssignmentsFragment extends Fragment {
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView link;
             final TextView date;
             final View submit;
 
@@ -451,6 +469,7 @@ public class StudentAssignmentsFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                link = itemView.findViewById(R.id.textPostLink);
                 date = itemView.findViewById(R.id.textPostDate);
                 submit = itemView.findViewById(R.id.btnSubmitAssignment);
             }

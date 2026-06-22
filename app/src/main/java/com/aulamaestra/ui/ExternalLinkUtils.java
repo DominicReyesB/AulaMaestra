@@ -23,4 +23,21 @@ public final class ExternalLinkUtils {
             Toast.makeText(context, R.string.cannot_open_attachment, Toast.LENGTH_LONG).show();
         }
     }
+
+    public static String normalizeWebUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String clean = value.trim();
+        if (!clean.matches("^[a-zA-Z][a-zA-Z0-9+.-]*:.*")) {
+            clean = "https://" + clean;
+        }
+        Uri uri = Uri.parse(clean);
+        String scheme = uri.getScheme();
+        if (scheme == null || uri.getHost() == null
+                || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+            return null;
+        }
+        return clean;
+    }
 }
