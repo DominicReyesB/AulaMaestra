@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS posts (
     title VARCHAR(500) NOT NULL,
     body TEXT,
     file_path TEXT,
+    link_url TEXT,
     created_at BIGINT NOT NULL,
     KEY idx_posts_salon_type_created (salon_id, post_type, created_at),
     CONSTRAINT fk_posts_salon FOREIGN KEY (salon_id) REFERENCES salons (id) ON DELETE CASCADE

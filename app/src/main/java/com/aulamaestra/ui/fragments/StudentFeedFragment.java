@@ -141,12 +141,21 @@ public class StudentFeedFragment extends Fragment {
                 String name = new File(p.filePath).getName();
                 h.file.setText(h.itemView.getContext().getString(R.string.open_named_attachment, name));
                 h.file.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
-                h.itemView.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.filePath));
             } else {
                 h.file.setVisibility(View.GONE);
                 h.file.setOnClickListener(null);
-                h.itemView.setOnClickListener(null);
             }
+            if (p.linkUrl != null && !p.linkUrl.isEmpty()) {
+                h.link.setVisibility(View.VISIBLE);
+                h.link.setOnClickListener(v -> ExternalLinkUtils.open(v.getContext(), p.linkUrl));
+            } else {
+                h.link.setVisibility(View.GONE);
+                h.link.setOnClickListener(null);
+            }
+            String primaryAttachment = p.filePath != null && !p.filePath.isEmpty()
+                    ? p.filePath : p.linkUrl;
+            h.itemView.setOnClickListener(primaryAttachment == null || primaryAttachment.isEmpty()
+                    ? null : v -> ExternalLinkUtils.open(v.getContext(), primaryAttachment));
             h.date.setText(h.itemView.getContext().getString(
                     R.string.published_at, dateFormat.format(new Date(p.createdAt))));
         }
@@ -166,6 +175,7 @@ public class StudentFeedFragment extends Fragment {
             final TextView title;
             final TextView body;
             final TextView file;
+            final TextView link;
             final TextView date;
 
             VH(@NonNull View itemView) {
@@ -174,6 +184,7 @@ public class StudentFeedFragment extends Fragment {
                 title = itemView.findViewById(R.id.textPostTitle);
                 body = itemView.findViewById(R.id.textPostBody);
                 file = itemView.findViewById(R.id.textPostFile);
+                link = itemView.findViewById(R.id.textPostLink);
                 date = itemView.findViewById(R.id.textPostDate);
             }
         }

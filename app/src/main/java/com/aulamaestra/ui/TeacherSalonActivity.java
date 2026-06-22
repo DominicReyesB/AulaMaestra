@@ -130,6 +130,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
         }
         TextInputEditText title = form.findViewById(R.id.inputTitle);
         TextInputEditText body = form.findViewById(R.id.inputBody);
+        TextInputEditText link = form.findViewById(R.id.inputPostLink);
         TextView picked = form.findViewById(R.id.textPickedFile);
         form.findViewById(R.id.btnPickFile).setOnClickListener(v -> {
             activePostFileLabel = picked;
@@ -153,6 +154,12 @@ public class TeacherSalonActivity extends AppCompatActivity {
                 return;
             }
             String b = textOf(body);
+            String rawLink = textOf(link);
+            String linkUrl = ExternalLinkUtils.normalizeWebUrl(rawLink);
+            if (!rawLink.isEmpty() && linkUrl == null) {
+                Toast.makeText(this, R.string.invalid_link, Toast.LENGTH_SHORT).show();
+                return;
+            }
             final int finalPostType = postType;
             setPublishBusy(d, true);
             if (pendingPostUri != null) {
@@ -169,7 +176,7 @@ public class TeacherSalonActivity extends AppCompatActivity {
                     repo.uploadLocalFile(local, new RepoCallback<String>() {
                         @Override
                         public void onSuccess(String url) {
-                            publishPost(salonId, finalPostType, t, b, url, vm, d);
+                            publishPost(salonId, finalPostType, t, b, url, linkUrl, vm, d);
                         }
 
                         @Override
@@ -180,18 +187,18 @@ public class TeacherSalonActivity extends AppCompatActivity {
                     });
                 });
             } else {
-                publishPost(salonId, finalPostType, t, b, null, vm, d);
+                publishPost(salonId, finalPostType, t, b, null, linkUrl, vm, d);
             }
         });
     }
 
     private void publishPost(long salonId, int postType, String title, String body, String fileUrl,
-                           SalonViewModel vm, AlertDialog d) {
-        repo.insertPost(salonId, postType, title, body, fileUrl, new RepoCallback<Long>() {
+                             String linkUrl, SalonViewModel vm, AlertDialog d) {
+        repo.insertPost(salonId, postType, title, body, fileUrl, linkUrl, new RepoCallback<Long>() {
             @Override
             public void onSuccess(Long id) {
                 vm.addPost(new com.aulamaestra.model.Post(
-                        id, postType, title, body, fileUrl, System.currentTimeMillis()));
+                        id, postType, title, body, fileUrl, linkUrl, System.currentTimeMillis()));
                 vm.bump(repo);
                 Toast.makeText(TeacherSalonActivity.this, "Publicado", Toast.LENGTH_SHORT).show();
                 d.dismiss();

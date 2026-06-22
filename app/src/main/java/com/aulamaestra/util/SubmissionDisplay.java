@@ -4,7 +4,9 @@ import com.aulamaestra.model.SubmissionAttachment;
 import com.aulamaestra.model.SubmissionRow;
 
 import java.io.File;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class SubmissionDisplay {
     private SubmissionDisplay() {
@@ -15,15 +17,24 @@ public final class SubmissionDisplay {
         if (r.textAnswer != null && !r.textAnswer.isEmpty()) {
             sb.append(r.textAnswer);
         }
+        Set<String> shownUrls = new HashSet<>();
         if (r.linkUrl != null && !r.linkUrl.isEmpty()) {
-            appendLine(sb, "Enlace: " + r.linkUrl);
+            String cleanLink = r.linkUrl.trim();
+            if (shownUrls.add(cleanLink)) {
+                appendLine(sb, "Enlace: " + cleanLink);
+            }
         }
         List<SubmissionAttachment> attachments = SubmissionAttachments.fromJson(r.attachmentsJson);
         for (SubmissionAttachment a : attachments) {
-            appendLine(sb, SubmissionAttachments.describeForDisplay(a));
+            if (shownUrls.add(a.url.trim())) {
+                appendLine(sb, SubmissionAttachments.describeForDisplay(a));
+            }
         }
-        if (attachments.isEmpty() && r.filePath != null && !r.filePath.isEmpty()) {
-            appendLine(sb, "Archivo: " + new File(r.filePath).getName());
+        if (r.filePath != null && !r.filePath.isEmpty()) {
+            String cleanFile = r.filePath.trim();
+            if (shownUrls.add(cleanFile)) {
+                appendLine(sb, "Archivo: " + new File(cleanFile).getName());
+            }
         }
         return sb.length() == 0 ? "(sin contenido)" : sb.toString();
     }
