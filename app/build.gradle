@@ -10,8 +10,8 @@ android {
         applicationId "com.aulamaestra"
         minSdk 24
         targetSdk 35
-        versionCode 6
-        versionName "1.5"
+        versionCode 7
+        versionName "1.6"
         // URL pública del API en Railway (termina en /)
         buildConfigField "String", "API_BASE_URL", '"https://aulamaestra-production.up.railway.app/"'
     }
@@ -40,7 +40,6 @@ dependencies {
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
     implementation 'androidx.lifecycle:lifecycle-livedata:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
     implementation 'androidx.fragment:fragment:1.6.2'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'

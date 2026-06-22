@@ -18,7 +18,7 @@ import com.google.android.material.textfield.TextInputEditText;
 public class LoginActivity extends AppCompatActivity {
     public static final String EXTRA_MANUAL_LOGIN = "manual_login";
 
-    private final AulaRepository repo = AulaRepository.get();
+    private AulaRepository repo;
     private SessionManager session;
     private TextInputEditText inputUser;
     private TextInputEditText inputPass;
@@ -47,7 +47,7 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
         setLoading(true);
-        repo.login(name, pass, new RepoCallback<AuthLoginResponse>() {
+        repository().login(name, pass, new RepoCallback<AuthLoginResponse>() {
             @Override
             public void onSuccess(AuthLoginResponse r) {
                 setLoading(false);
@@ -73,6 +73,13 @@ public class LoginActivity extends AppCompatActivity {
                 Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private AulaRepository repository() {
+        if (repo == null) {
+            repo = AulaRepository.get();
+        }
+        return repo;
     }
 
     private void openStudent(long studentId, long salonId, String displayName) {

@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_DOWNLOAD_URL =
   process.env.APP_DOWNLOAD_URL ||
-  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.5.0/AulaMaestra-v1.5.0.apk';
+  'https://github.com/DominicReyesB/AulaMaestra/releases/download/v1.6.0/AulaMaestra-v1.6.0.apk';
 
 app.set('trust proxy', 1);
 app.use(cors());
